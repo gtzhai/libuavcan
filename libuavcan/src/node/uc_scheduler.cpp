@@ -5,6 +5,7 @@
 #include <uavcan/node/scheduler.hpp>
 #include <uavcan/debug.hpp>
 #include <cassert>
+#include <iostream>
 
 namespace uavcan
 {
@@ -154,6 +155,8 @@ void Scheduler::pollCleanup(MonotonicTime mono_ts, uint32_t num_frames_processed
 
 int Scheduler::spin(MonotonicTime deadline)
 {
+    //std::cerr<<"scheduler::spin:in"<<std::endl;
+
     if (inside_spin_)  // Preventing recursive calls
     {
         UAVCAN_ASSERT(0);
@@ -162,6 +165,7 @@ int Scheduler::spin(MonotonicTime deadline)
     InsideSpinSetter iss(*this);
     UAVCAN_ASSERT(inside_spin_);
 
+    //std::cerr<<"scheduler::spin:1"<<std::endl;
     int retval = 0;
     while (true)
     {
@@ -194,6 +198,60 @@ int Scheduler::spinOnce()
     UAVCAN_ASSERT(inside_spin_);
 
     const int retval = dispatcher_.spinOnce();
+    if (retval < 0)
+    {
+        return retval;
+    }
+
+    const MonotonicTime ts = deadline_scheduler_.pollAndGetMonotonicTime(getSystemClock());
+    pollCleanup(ts, unsigned(retval));
+
+    return retval;
+}
+
+int Scheduler::spin(RxFrame &frame, MonotonicTime deadline)
+{
+    if (inside_spin_)  // Preventing recursive calls
+    {
+        UAVCAN_ASSERT(0);
+        return -ErrRecursiveCall;
+    }
+    InsideSpinSetter iss(*this);
+    UAVCAN_ASSERT(inside_spin_);
+
+    //std::cerr<<"scheduler::spinframe:1"<<std::endl;
+    int retval = 0;
+    while (true)
+    {
+        const MonotonicTime dl = computeDispatcherSpinDeadline(deadline);
+        retval = dispatcher_.spin(frame, dl);
+        if (retval < 0)
+        {
+            break;
+        }
+
+        const MonotonicTime ts = deadline_scheduler_.pollAndGetMonotonicTime(getSystemClock());
+        pollCleanup(ts, unsigned(retval));
+        if (ts >= deadline)
+        {
+            break;
+        }
+    }
+
+    return retval;
+}
+
+int Scheduler::spinOnce(RxFrame& frame)
+{
+    if (inside_spin_)  // Preventing recursive calls
+    {
+        UAVCAN_ASSERT(0);
+        return -ErrRecursiveCall;
+    }
+    InsideSpinSetter iss(*this);
+    UAVCAN_ASSERT(inside_spin_);
+
+    const int retval = dispatcher_.spinOnce(frame);
     if (retval < 0)
     {
         return retval;

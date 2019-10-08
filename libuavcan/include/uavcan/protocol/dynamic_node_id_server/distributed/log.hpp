@@ -27,7 +27,7 @@ class Log
 public:
     typedef uint8_t Index;
 
-    enum { Capacity = NodeID::Max + 1 };
+    enum { Capacity = NodeID::AbsMax + 1 };//zgt
 
 private:
     IStorageBackend& storage_;

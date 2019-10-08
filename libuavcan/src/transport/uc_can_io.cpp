@@ -8,6 +8,7 @@
 #include <functional>
 #include <uavcan/transport/can_io.hpp>
 #include <uavcan/debug.hpp>
+#include <iostream>
 
 namespace uavcan 
 {
@@ -449,6 +450,7 @@ int CanIOManager::receive(CanRxFrame &out_frame, MonotonicTime blocking_deadline
             if (masks.read & (1 << i)) 
             {
                 ICanIface *const iface = driver_.getIface(i);
+                //std::cerr<<"canio::receive:1:"<<std::endl;
                 if (iface == UAVCAN_NULLPTR) 
                 {
                     UAVCAN_ASSERT(0);   // Nonexistent interface
@@ -456,6 +458,7 @@ int CanIOManager::receive(CanRxFrame &out_frame, MonotonicTime blocking_deadline
                 }
 
                 const int res = iface->receive(out_frame, out_frame.ts_mono, out_frame.ts_utc, out_flags);
+                //std::cerr<<"canio::receive:2:"<<res<<std::endl;
                 if (res == 0) 
                 {
                     UAVCAN_ASSERT(0);   // select() reported that iface has pending RX frames, but receive() returned none

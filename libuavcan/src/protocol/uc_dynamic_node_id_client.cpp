@@ -89,14 +89,14 @@ void DynamicNodeIDClient::handleTimerEvent(const TimerEvent&)
     }
 }
 
-void DynamicNodeIDClient::handleAllocation(const ReceivedDataStructure<protocol::dynamic_node_id::Allocation>& msg)
+int DynamicNodeIDClient::handleAllocation(const ReceivedDataStructure<protocol::dynamic_node_id::Allocation>& msg)
 {
     UAVCAN_ASSERT(preferred_node_id_.isValid());
     if (isAllocationComplete())
     {
         UAVCAN_ASSERT(0);
         terminate();
-        return;
+        return 0;
     }
 
     UAVCAN_TRACE("DynamicNodeIDClient", "Allocation message from %d, %d bytes of unique ID, node ID %d",
@@ -119,7 +119,7 @@ void DynamicNodeIDClient::handleAllocation(const ReceivedDataStructure<protocol:
         (full_response && (msg.node_id == 0)))
     {
         UAVCAN_TRACE("DynamicNodeIDClient", "Message from %d ignored", static_cast<int>(msg.getSrcNodeID().get()));
-        return;
+        return 0;
     }
 
     /*
@@ -142,6 +142,8 @@ void DynamicNodeIDClient::handleAllocation(const ReceivedDataStructure<protocol:
             restartTimer(ModeDelayBeforeFollowup);
         }
     }
+
+    return 0;
 }
 
 int DynamicNodeIDClient::start(const UniqueID& unique_id,

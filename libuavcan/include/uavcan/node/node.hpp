@@ -23,6 +23,7 @@
 #if !defined(UAVCAN_CPP_VERSION) || !defined(UAVCAN_CPP11)
 # error UAVCAN_CPP_VERSION
 #endif
+#include <iostream>
 
 namespace uavcan
 {
@@ -81,8 +82,8 @@ public:
      */
     Node(ICanDriver& can_driver,
          ISystemClock& system_clock) :
-        scheduler_(can_driver, pool_allocator_, system_clock),
-        proto_nsp_(*this)
+        scheduler_(can_driver, pool_allocator_, system_clock)
+        ,proto_nsp_(*this)
 #if !UAVCAN_TINY
         , proto_dtp_(*this)
         , proto_logger_(*this)
@@ -140,6 +141,33 @@ public:
         if (started_)
         {
             return INode::spinOnce();
+        }
+        return -ErrNotInited;
+    }
+
+    int spin(RxFrame& frame, MonotonicTime deadline)
+    {
+        if (started_)
+        {
+            return INode::spin(frame, deadline);
+        }
+        return -ErrNotInited;
+    }
+
+    int spin(RxFrame& frame, MonotonicDuration duration)
+    {
+        if (started_)
+        {
+            return INode::spin(frame, duration);
+        }
+        return -ErrNotInited;
+    }
+
+    int spinOnce(RxFrame& frame)
+    {
+        if (started_)
+        {
+            return INode::spinOnce(frame);
         }
         return -ErrNotInited;
     }
@@ -280,32 +308,47 @@ int Node<MemPoolSize_>::start(const TransferPriority priority)
     GlobalDataTypeRegistry::instance().freeze();
 
     int res = 0;
+#if UAVCAN_TINY_PROTO 
+    (void)priority;
+    res = proto_logger_.init();
+    if (res < 0)
+    {
+        std::cerr<<"logger error"<<std::endl;
+        goto fail;
+    }
+#else
     res = proto_nsp_.startAndPublish(priority);
     if (res < 0)
     {
+        std::cerr<<"nsp error"<<std::endl;
         goto fail;
     }
 #if !UAVCAN_TINY
     res = proto_dtp_.start();
     if (res < 0)
     {
+        std::cerr<<"dtp error"<<std::endl;
         goto fail;
     }
     res = proto_logger_.init();
     if (res < 0)
     {
+        std::cerr<<"logger error"<<std::endl;
         goto fail;
     }
     res = proto_rrs_.start();
     if (res < 0)
     {
+        std::cerr<<"rrs error"<<std::endl;
         goto fail;
     }
     res = proto_tsp_.start();
     if (res < 0)
     {
+        std::cerr<<"tsp error"<<std::endl;
         goto fail;
     }
+#endif
 #endif
     started_ = res >= 0;
     return res;

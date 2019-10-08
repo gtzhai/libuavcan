@@ -67,10 +67,10 @@ public:
  */
 class NodeDiscoverer : TimerBase
 {
-    typedef MethodBinder<NodeDiscoverer*, void (NodeDiscoverer::*)(const ServiceCallResult<protocol::GetNodeInfo>&)>
+    typedef MethodBinder<NodeDiscoverer*, int (NodeDiscoverer::*)(const ServiceCallResult<protocol::GetNodeInfo>&)>
         GetNodeInfoResponseCallback;
 
-    typedef MethodBinder<NodeDiscoverer*, void (NodeDiscoverer::*)(const ReceivedDataStructure<protocol::NodeStatus>&)>
+    typedef MethodBinder<NodeDiscoverer*, int (NodeDiscoverer::*)(const ReceivedDataStructure<protocol::NodeStatus>&)>
         NodeStatusCallback;
 
     struct NodeData
@@ -100,7 +100,7 @@ class NodeDiscoverer : TimerBase
     INodeDiscoveryHandler& handler_;
     IEventTracer& tracer_;
 
-    BitSet<NodeID::Max + 1> committed_node_mask_;       ///< Nodes that are marked will not be queried
+    BitSet<NodeID::AbsMax + 1> committed_node_mask_;       ///< Nodes that are marked will not be queried
     NodeMap node_map_;
 
     ServiceClient<protocol::GetNodeInfo, GetNodeInfoResponseCallback> get_node_info_client_;
@@ -203,7 +203,7 @@ class NodeDiscoverer : TimerBase
         }
     }
 
-    void handleGetNodeInfoResponse(const ServiceCallResult<protocol::GetNodeInfo>& result)
+    int handleGetNodeInfoResponse(const ServiceCallResult<protocol::GetNodeInfo>& result)
     {
         if (result.isSuccessful())
         {
@@ -218,7 +218,7 @@ class NodeDiscoverer : TimerBase
             NodeData* const data = node_map_.access(result.getCallID().server_node_id);
             if (data == UAVCAN_NULLPTR)
             {
-                return;         // Probably it is a known node now
+                return 0;         // Probably it is a known node now
             }
 
             UAVCAN_TRACE("dynamic_node_id_server::NodeDiscoverer",
@@ -231,6 +231,7 @@ class NodeDiscoverer : TimerBase
                 // Warning: data pointer is invalidated now
             }
         }
+        return 0;
     }
 
     void handleTimerEvent(const TimerEvent&)
@@ -264,11 +265,11 @@ class NodeDiscoverer : TimerBase
         }
     }
 
-    void handleNodeStatus(const ReceivedDataStructure<protocol::NodeStatus>& msg)
+    int handleNodeStatus(const ReceivedDataStructure<protocol::NodeStatus>& msg)
     {
         if (!needToQuery(msg.getSrcNodeID()))
         {
-            return;
+            return 0;
         }
 
         NodeData* data = node_map_.access(msg.getSrcNodeID());
@@ -280,7 +281,7 @@ class NodeDiscoverer : TimerBase
             if (data == UAVCAN_NULLPTR)
             {
                 getNode().registerInternalFailure("NodeDiscoverer OOM");
-                return;
+                return 0;
             }
         }
         UAVCAN_ASSERT(data != UAVCAN_NULLPTR);
@@ -297,6 +298,7 @@ class NodeDiscoverer : TimerBase
             startPeriodic(MonotonicDuration::fromMSec(TimerPollIntervalMs));
             trace(TraceDiscoveryTimerStart, getPeriod().toUSec());
         }
+        return 0;
     }
 
 public:

@@ -65,6 +65,11 @@ public:
         return getScheduler().spin(deadline);
     }
 
+    int spin(RxFrame& frame, MonotonicTime deadline)
+    {
+        return getScheduler().spin(frame, deadline);
+    }
+
     /**
      * Runs the node.
      * Normally your application should not block anywhere else.
@@ -74,6 +79,11 @@ public:
     int spin(MonotonicDuration duration)
     {
         return getScheduler().spin(getMonotonicTime() + duration);
+    }
+
+    int spin(RxFrame& frame, MonotonicDuration duration)
+    {
+        return getScheduler().spin(frame, getMonotonicTime() + duration);
     }
 
     /**
@@ -86,6 +96,11 @@ public:
     int spinOnce()
     {
         return getScheduler().spinOnce();
+    }
+
+    int spinOnce(RxFrame &frame)
+    {
+        return getScheduler().spinOnce(frame);
     }
 
     /**

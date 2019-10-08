@@ -56,20 +56,6 @@ include_directories(${DSDLC_OUTPUT})
 #
 if (COMPILER_IS_GCC_COMPATIBLE)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wundef")
-endif ()
-
-if (DEFINED UAVCAN_CPP_VERSION)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUAVCAN_CPP_VERSION=${UAVCAN_CPP_VERSION}")
-    if (UAVCAN_CPP_VERSION STREQUAL 2011)
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-    elseif (UAVCAN_CPP_VERSION STREQUAL 2014)
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
-    elseif (UAVCAN_CPP_VERSION STREQUAL 2017)
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
-    else ()
-        message(WARNING "UAVCAN_CPP_VERSION value \"${UAVCAN_CPP_VERSION}\" is unknown. -std flag will not be set by the build script.")
-    endif ()
-else ()
     message(STATUS "Using C++11")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 endif ()
@@ -84,7 +70,9 @@ include_directories(include)
 # libuavcan
 #
 file(GLOB_RECURSE LIBUAVCAN_CXX_FILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "src/*.cpp")
-add_library(uavcan STATIC ${LIBUAVCAN_CXX_FILES})
+#add_library(uavcan STATIC ${LIBUAVCAN_CXX_FILES})
+add_library(uavcan SHARED ${LIBUAVCAN_CXX_FILES})
+set_target_properties(uavcan PROPERTIES VERSION 0.0.0 SOVERSION 1)
 add_dependencies(uavcan libuavcan_dsdlc)
 
 install(TARGETS uavcan                            DESTINATION lib)
@@ -152,8 +140,8 @@ if (DEBUG_BUILD)
 
     if (GTEST_FOUND)
         message(STATUS "GTest found, tests will be built and run.")
-        add_libuavcan_test(libuavcan_test       uavcan       "")                 # Default
-        add_libuavcan_test(libuavcan_test_optim uavcan_optim "${optim_flags}")   # Max optimization
+        #add_libuavcan_test(libuavcan_test       uavcan       "")                 # Default
+        #add_libuavcan_test(libuavcan_test_optim uavcan_optim "${optim_flags}")   # Max optimization
     else (GTEST_FOUND)
         message(STATUS "GTest was not found, tests will not be built")
     endif (GTEST_FOUND)

@@ -5,6 +5,7 @@
 #include <uavcan/protocol/node_status_provider.hpp>
 #include <uavcan/debug.hpp>
 #include <cassert>
+#include <iostream>
 
 namespace uavcan
 {
@@ -47,18 +48,20 @@ void NodeStatusProvider::handleTimerEvent(const TimerEvent&)
     }
 }
 
-void NodeStatusProvider::handleGetNodeInfoRequest(const protocol::GetNodeInfo::Request&,
+int NodeStatusProvider::handleGetNodeInfoRequest(const protocol::GetNodeInfo::Request&,
                                                   protocol::GetNodeInfo::Response& rsp)
 {
     UAVCAN_TRACE("NodeStatusProvider", "Got GetNodeInfo request");
     UAVCAN_ASSERT(isNodeInfoInitialized());
     rsp = node_info_;
+    return 0;
 }
 
 int NodeStatusProvider::startAndPublish(const TransferPriority priority)
 {
     if (!isNodeInfoInitialized())
     {
+        std::cerr<<"nsp error 0"<<std::endl;
         UAVCAN_TRACE("NodeStatusProvider", "Node info was not initialized");
         return -ErrNotInited;
     }
@@ -72,6 +75,7 @@ int NodeStatusProvider::startAndPublish(const TransferPriority priority)
         res = publish();
         if (res < 0)  // Initial broadcast
         {
+            std::cerr<<"nsp error 1"<<std::endl;
             goto fail;
         }
     }
@@ -79,6 +83,7 @@ int NodeStatusProvider::startAndPublish(const TransferPriority priority)
     res = gni_srv_.start(GetNodeInfoCallback(this, &NodeStatusProvider::handleGetNodeInfoRequest));
     if (res < 0)
     {
+        std::cerr<<"nsp error 2"<<std::endl;
         goto fail;
     }
 

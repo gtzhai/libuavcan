@@ -21,17 +21,22 @@ void TransferSender::init(const DataTypeDescriptor& dtid)
 
     data_type_id_ = dtid.getID();
     crc_base_     = dtid.getSignature().toTransferCRC();
+    crc_base32_     = dtid.getSignature().toTransferCRC32();
+    crc_base48_     = dtid.getSignature().toTransferCRC48();
 }
 
-int TransferSender::send(const uint8_t* payload, unsigned payload_len, MonotonicTime tx_deadline,
+int TransferSender::send(Frame &frame, const uint8_t* payload, unsigned payload_len, MonotonicTime tx_deadline,
                          MonotonicTime blocking_deadline, TransferType transfer_type, NodeID dst_node_id,
                          TransferID tid) const
 {
-    Frame frame(data_type_id_, transfer_type, dispatcher_.getNodeID(), dst_node_id, tid);
-
+    frame.setTransferType(transfer_type);
+    frame.setDataTypeID(data_type_id_);
+    frame.setSrcNodeID(dispatcher_.getNodeID());
+    frame.setDstNodeID(dst_node_id);
+    frame.setTransferID(tid);
     frame.setPriority(priority_);
-    frame.setStartOfTransfer(true);
 
+    frame.setStartOfTransfer(true);
     UAVCAN_TRACE("TransferSender", "%s", frame.toString().c_str());
 
     /*
@@ -78,6 +83,8 @@ int TransferSender::send(const uint8_t* payload, unsigned payload_len, Monotonic
         UAVCAN_ASSERT(frame.getSrcNodeID().isUnicast());
 
         int offset = 0;
+
+        if(frame.getFrameType() == 0)
         {
             TransferCRC crc = crc_base_;
             crc.add(payload, payload_len);
@@ -99,11 +106,30 @@ int TransferSender::send(const uint8_t* payload, unsigned payload_len, Monotonic
             offset = write_res - 2;
             UAVCAN_ASSERT(int(payload_len) > offset);
         }
+        else
+        {
+            const int write_res = frame.setPayload(payload + offset, payload_len - unsigned(offset));
+            if (write_res < 0)
+            {
+                UAVCAN_TRACE("TransferSender", "Frame payload write failure, %i", write_res);
+                registerError();
+                return write_res;
+            }
+            offset += write_res;
+        }
 
         int num_sent = 0;
 
+
+        TransferID transfer_id = tid;
+        if(frame.isTransferIdAutoInc())
+        {
+            transfer_id = frame.getBaseAutoTransferID();
+        }
+
         while (true)
         {
+            frame.setTransferID(transfer_id);
             const int send_res = dispatcher_.send(frame, tx_deadline, blocking_deadline, flags_, iface_mask_);
             if (send_res < 0)
             {
@@ -115,6 +141,11 @@ int TransferSender::send(const uint8_t* payload, unsigned payload_len, Monotonic
             if (frame.isEndOfTransfer())
             {
                 return num_sent;  // Number of frames transmitted
+            }
+
+            if (frame.isTransferIdAutoInc())
+            {
+                transfer_id.increment(); 
             }
 
             frame.setStartOfTransfer(false);
@@ -142,6 +173,45 @@ int TransferSender::send(const uint8_t* payload, unsigned payload_len, Monotonic
     return -ErrLogic; // Return path analysis is apparently broken. There should be no warning, this 'return' is unreachable.
 }
 
+int TransferSender::send(Frame &frame, const uint8_t* payload, unsigned payload_len, MonotonicTime tx_deadline,
+                         MonotonicTime blocking_deadline, TransferType transfer_type, NodeID dst_node_id) const
+{
+    /*
+     * TODO: TID is not needed for anonymous transfers, this part of the code can be skipped?
+     */
+    const OutgoingTransferRegistryKey otr_key(data_type_id_, transfer_type, dst_node_id);
+
+    UAVCAN_ASSERT(!tx_deadline.isZero());
+    const MonotonicTime otr_deadline = tx_deadline + max(max_transfer_interval_ * 2,
+                                                         OutgoingTransferRegistry::MinEntryLifetime);
+
+    TransferID* const tid = dispatcher_.getOutgoingTransferRegistry().accessOrCreate(otr_key, otr_deadline);
+    if (tid == UAVCAN_NULLPTR)
+    {
+        UAVCAN_TRACE("TransferSender", "OTR access failure, dtid=%d tt=%i",
+                     int(data_type_id_.get()), int(transfer_type));
+        return -ErrMemory;
+    }
+
+    const TransferID this_tid = tid->get();
+    tid->increment();
+
+    return send(frame, payload, payload_len, tx_deadline, blocking_deadline, transfer_type,
+                dst_node_id, this_tid);
+}
+
+int TransferSender::send(const uint8_t* payload, unsigned payload_len, MonotonicTime tx_deadline,
+                         MonotonicTime blocking_deadline, TransferType transfer_type, NodeID dst_node_id,
+                         TransferID tid) const
+{
+    Frame frame(data_type_id_, transfer_type, dispatcher_.getNodeID(), dst_node_id, tid);
+
+    return send(frame, payload, payload_len, tx_deadline, blocking_deadline, transfer_type,
+                dst_node_id, tid);
+}
+
+
+
 int TransferSender::send(const uint8_t* payload, unsigned payload_len, MonotonicTime tx_deadline,
                          MonotonicTime blocking_deadline, TransferType transfer_type, NodeID dst_node_id) const
 {
@@ -165,7 +235,8 @@ int TransferSender::send(const uint8_t* payload, unsigned payload_len, Monotonic
     const TransferID this_tid = tid->get();
     tid->increment();
 
-    return send(payload, payload_len, tx_deadline, blocking_deadline, transfer_type,
+    Frame frame(data_type_id_, transfer_type, dispatcher_.getNodeID(), dst_node_id, this_tid);
+    return send(frame, payload, payload_len, tx_deadline, blocking_deadline, transfer_type,
                 dst_node_id, this_tid);
 }
 

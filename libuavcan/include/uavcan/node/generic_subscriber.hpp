@@ -15,6 +15,7 @@
 #include <uavcan/transport/transfer_listener.hpp>
 #include <uavcan/marshal/scalar_codec.hpp>
 #include <uavcan/marshal/types.hpp>
+#include <iostream>
 
 namespace uavcan
 {
@@ -75,6 +76,7 @@ public:
     NodeID getSrcNodeID()            const { return safeget<NodeID, &IncomingTransfer::getSrcNodeID>(); }
     uint8_t getIfaceIndex()          const { return safeget<uint8_t, &IncomingTransfer::getIfaceIndex>(); }
     bool isAnonymousTransfer()       const { return safeget<bool, &IncomingTransfer::isAnonymousTransfer>(); }
+    const IncomingTransfer* getIncomingTransfer()  const { return _transfer_; } 
 };
 
 /**
@@ -254,6 +256,7 @@ void GenericSubscriber<DataSpec, DataStruct, TransferListenerType>::handleIncomi
 {
     ReceivedDataStructureSpec rx_struct(&transfer);
 
+    //std::cerr<<"subscriber handle incoming transfer in:"<<std::endl;
     /*
      * Decoding into the temporary storage
      */
@@ -262,15 +265,15 @@ void GenericSubscriber<DataSpec, DataStruct, TransferListenerType>::handleIncomi
 
     const int decode_res = DataStruct::decode(rx_struct, codec);
 
-    // We don't need the data anymore, the memory can be reused from the callback:
-    transfer.release();
-
     if (decode_res <= 0)
     {
         UAVCAN_TRACE("GenericSubscriber", "Unable to decode the message [%i] [%s]",
                      decode_res, DataSpec::getDataTypeFullName());
         failure_count_++;
         node_.getDispatcher().getTransferPerfCounter().addError();
+
+        // We don't need the data anymore, the memory can be reused from the callback:
+        transfer.release();
         return;
     }
 
@@ -278,6 +281,9 @@ void GenericSubscriber<DataSpec, DataStruct, TransferListenerType>::handleIncomi
      * Invoking the callback
      */
     handleReceivedDataStruct(rx_struct);
+
+    // We don't need the data anymore, the memory can be reused from the callback:
+    transfer.release();
 }
 
 template <typename DataSpec, typename DataStruct, typename TransferListenerType>

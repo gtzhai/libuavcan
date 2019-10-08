@@ -77,18 +77,18 @@ public:
  */
 class UAVCAN_EXPORT ParamServer
 {
-    typedef MethodBinder<ParamServer*, void (ParamServer::*)(const protocol::param::GetSet::Request&,
+    typedef MethodBinder<ParamServer*, int (ParamServer::*)(const protocol::param::GetSet::Request&,
                                                              protocol::param::GetSet::Response&)> GetSetCallback;
 
     typedef MethodBinder<ParamServer*,
-                         void (ParamServer::*)(const protocol::param::ExecuteOpcode::Request&,
+                         int (ParamServer::*)(const protocol::param::ExecuteOpcode::Request&,
                                                protocol::param::ExecuteOpcode::Response&)> ExecuteOpcodeCallback;
 
     ServiceServer<protocol::param::GetSet, GetSetCallback> get_set_srv_;
     ServiceServer<protocol::param::ExecuteOpcode, ExecuteOpcodeCallback> save_erase_srv_;
     IParamManager* manager_;
 
-    void handleGetSet(const protocol::param::GetSet::Request& in, protocol::param::GetSet::Response& out)
+    int handleGetSet(const protocol::param::GetSet::Request& in, protocol::param::GetSet::Response& out)
     {
         UAVCAN_ASSERT(manager_ != UAVCAN_NULLPTR);
 
@@ -126,9 +126,10 @@ class UAVCAN_EXPORT ParamServer
             UAVCAN_TRACE("ParamServer", "GetSet: Unknown param: index=%i name='%s'", int(in.index), out.name.c_str());
             out.name.clear();
         }
+        return 0;
     }
 
-    void handleExecuteOpcode(const protocol::param::ExecuteOpcode::Request& in,
+    int handleExecuteOpcode(const protocol::param::ExecuteOpcode::Request& in,
                              protocol::param::ExecuteOpcode::Response& out)
     {
         UAVCAN_ASSERT(manager_ != UAVCAN_NULLPTR);
@@ -146,6 +147,7 @@ class UAVCAN_EXPORT ParamServer
             UAVCAN_TRACE("ParamServer", "ExecuteOpcode: invalid opcode %i", int(in.opcode));
             out.ok = false;
         }
+        return 0;
     }
 
 public:

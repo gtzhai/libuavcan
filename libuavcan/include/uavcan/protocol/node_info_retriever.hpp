@@ -97,7 +97,7 @@ public:
 
 private:
     typedef MethodBinder<NodeInfoRetriever*,
-                         void (NodeInfoRetriever::*)(const ServiceCallResult<protocol::GetNodeInfo>&)>
+                         int (NodeInfoRetriever::*)(const ServiceCallResult<protocol::GetNodeInfo>&)>
             GetNodeInfoResponseCallback;
 
     struct Entry
@@ -162,7 +162,7 @@ private:
     /*
      * State
      */
-    Entry entries_[NodeID::Max];  // [1, NodeID::Max]
+    Entry entries_[NodeID::AbsMax];  // [1, NodeID::Max]
 
     Multiset<INodeInfoListener*> listeners_;
 
@@ -180,7 +180,7 @@ private:
     const Entry& getEntry(NodeID node_id) const { return const_cast<NodeInfoRetriever*>(this)->getEntry(node_id); }
     Entry&       getEntry(NodeID node_id)
     {
-        if (node_id.get() < 1 || node_id.get() > NodeID::Max)
+        if (node_id.get() < 1 || node_id.get() > NodeID::AbsMax)
         {
             handleFatalError("NodeInfoRetriever NodeID");
         }
@@ -203,12 +203,12 @@ private:
         for (unsigned iter_cnt_ = 0; iter_cnt_ < (sizeof(entries_) / sizeof(entries_[0])); iter_cnt_++) // Round-robin
         {
             last_picked_node_++;
-            if (last_picked_node_ > NodeID::Max)
+            if (last_picked_node_ > NodeID::AbsMax)
             {
                 last_picked_node_ = 1;
             }
             UAVCAN_ASSERT((last_picked_node_ >= 1) &&
-                          (last_picked_node_ <= NodeID::Max));
+                          (last_picked_node_ <= NodeID::AbsMax));
 
             const Entry& entry = getEntry(last_picked_node_);
 
@@ -298,7 +298,7 @@ private:
             &INodeInfoListener::handleNodeStatusMessage, msg));
     }
 
-    void handleGetNodeInfoResponse(const ServiceCallResult<protocol::GetNodeInfo>& result)
+    int handleGetNodeInfoResponse(const ServiceCallResult<protocol::GetNodeInfo>& result)
     {
         Entry& entry = getEntry(result.getCallID().server_node_id);
 
@@ -326,6 +326,7 @@ private:
                 }
             }
         }
+        return 0;
     }
 
 public:

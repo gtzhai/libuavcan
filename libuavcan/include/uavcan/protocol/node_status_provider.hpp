@@ -51,7 +51,7 @@ public:
 class UAVCAN_EXPORT NodeStatusProvider : private TimerBase
 {
     typedef MethodBinder<NodeStatusProvider*,
-                         void (NodeStatusProvider::*)(const protocol::GetNodeInfo::Request&,
+                         int (NodeStatusProvider::*)(const protocol::GetNodeInfo::Request&,
                                                       protocol::GetNodeInfo::Response&)> GetNodeInfoCallback;
 
     const MonotonicTime creation_timestamp_;
@@ -70,7 +70,7 @@ class UAVCAN_EXPORT NodeStatusProvider : private TimerBase
     int publish();
 
     virtual void handleTimerEvent(const TimerEvent&);
-    void handleGetNodeInfoRequest(const protocol::GetNodeInfo::Request&, protocol::GetNodeInfo::Response& rsp);
+    int handleGetNodeInfoRequest(const protocol::GetNodeInfo::Request&, protocol::GetNodeInfo::Response& rsp);
 
 public:
     typedef typename StorageType<typename protocol::NodeStatus::FieldTypes::vendor_specific_status_code>::Type

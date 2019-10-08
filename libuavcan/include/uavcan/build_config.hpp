@@ -25,8 +25,6 @@
  * standard than used by the compiler, in which case this symbol can be overridden manually via
  * compiler flags.
  */
-#define UAVCAN_CPP17    2017
-#define UAVCAN_CPP14    2014
 #define UAVCAN_CPP11    2011
 #define UAVCAN_CPP03    2003
 
@@ -71,6 +69,7 @@
  * This macro enables built-in runtime checks and debug output via printf().
  * Should be used only for library development.
  */
+//#define UAVCAN_DEBUG 1
 #ifndef UAVCAN_DEBUG
 # define UAVCAN_DEBUG 0
 #endif
@@ -118,9 +117,15 @@
 # define UAVCAN_TINY 0
 #endif
 
+#define UAVCAN_TINY_PROTO 1
+#ifndef UAVCAN_TINY_PROTO
+# define UAVCAN_TINY_PROTO 0
+#endif
+
 /**
  * Disable the global data type registry, which can save some space on embedded systems.
  */
+//#define UAVCAN_NO_GLOBAL_DATA_TYPE_REGISTRY 1
 #ifndef UAVCAN_NO_GLOBAL_DATA_TYPE_REGISTRY
 # define UAVCAN_NO_GLOBAL_DATA_TYPE_REGISTRY 0
 #endif
@@ -222,7 +227,7 @@ namespace uavcan
 static const unsigned MemPoolBlockSize = UAVCAN_MEM_POOL_BLOCK_SIZE;
 #elif defined(__BIGGEST_ALIGNMENT__) && (__BIGGEST_ALIGNMENT__ <= 8)
 /// Convenient default for GCC-like compilers - if alignment allows, pool block size can be safely reduced.
-static const unsigned MemPoolBlockSize = 56;
+static const unsigned MemPoolBlockSize = 64;
 #else
 /// Safe default that should be OK for any platform.
 static const unsigned MemPoolBlockSize = 64;

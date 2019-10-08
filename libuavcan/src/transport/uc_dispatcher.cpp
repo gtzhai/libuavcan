@@ -5,6 +5,7 @@
 #include <uavcan/transport/dispatcher.hpp>
 #include <uavcan/debug.hpp>
 #include <cassert>
+#include <iostream>
 
 namespace uavcan
 {
@@ -129,14 +130,17 @@ void Dispatcher::ListenerRegistry::handleFrame(const RxFrame& frame)
         TransferListener* const next = p->getNextListNode();
         if (p->getDataTypeDescriptor().getID() == frame.getDataTypeID())
         {
+            //std::cerr<<"data is is same:"<<std::endl;
             p->handleFrame(frame); // p may be modified
         }
         else if (p->getDataTypeDescriptor().getID() < frame.getDataTypeID())  // Listeners are ordered by data type id!
         {
+            std::cerr<<"data id is little:"<<std::endl;
             break;
         }
         else
         {
+            std::cerr<<"data id is big:"<<std::endl;
             ;  // Nothing to do with this one
         }
         p = next;
@@ -187,8 +191,53 @@ void Dispatcher::handleFrame(const CanRxFrame& can_frame)
     }
 }
 
+void Dispatcher::handleFrame(RxFrame& frame, const CanRxFrame& can_frame)
+{
+    if (!frame.parse(can_frame))
+    {
+        // This is not counted as a transport error
+        UAVCAN_TRACE("Dispatcher", "Invalid CAN frame received: %s", can_frame.toString().c_str());
+        return;
+    }
+
+    //std::cerr<<"handle frame 1:"<<std::endl;
+    if(frame.getDstNodeID() != getNodeID())
+    {
+        return;
+    }
+
+    //std::cerr<<"handle frame 2:"<<std::endl;
+    switch (frame.getTransferType())
+    {
+    case TransferTypeMessageBroadcast:
+    {
+        lmsg_.handleFrame(frame);
+        break;
+    }
+    case TransferTypeServiceRequest:
+    {
+        lsrv_req_.handleFrame(frame);
+        break;
+    }
+    case TransferTypeServiceResponse:
+    {
+        lsrv_resp_.handleFrame(frame);
+        break;
+    }
+    default:
+    {
+        UAVCAN_ASSERT(0);
+        break;
+    }
+    }
+}
+
 #if UAVCAN_TINY
 void Dispatcher::handleLoopbackFrame(const CanRxFrame&)
+{
+}
+
+void Dispatcher::handleLoopbackFrame(RxFrame& frame, const CanRxFrame&)
 {
 }
 
@@ -209,6 +258,18 @@ void Dispatcher::handleLoopbackFrame(const CanRxFrame& can_frame)
     loopback_listeners_.invokeListeners(frame);
 }
 
+void Dispatcher::handleLoopbackFrame(RxFrame& frame, const CanRxFrame& can_frame)
+{
+    if (!frame.parse(can_frame))
+    {
+        UAVCAN_TRACE("Dispatcher", "Invalid loopback CAN frame: %s", can_frame.toString().c_str());
+        UAVCAN_ASSERT(0);  // No way!
+        return;
+    }
+    UAVCAN_ASSERT(frame.getSrcNodeID() == getNodeID());
+    loopback_listeners_.invokeListeners(frame);
+}
+
 void Dispatcher::notifyRxFrameListener(const CanRxFrame& can_frame, CanIOFlags flags)
 {
     if (rx_listener_ != UAVCAN_NULLPTR)
@@ -217,6 +278,74 @@ void Dispatcher::notifyRxFrameListener(const CanRxFrame& can_frame, CanIOFlags f
     }
 }
 #endif
+
+int Dispatcher::spin(RxFrame& frame, MonotonicTime deadline)
+{
+    int num_frames_processed = 0;
+    do
+    {
+        CanIOFlags flags = 0;
+        CanRxFrame can_frame;
+        const int res = canio_.receive(can_frame, deadline, flags);
+        
+        if (res < 0)
+        {
+            return res;
+        }
+        if (res > 0)
+        {
+            //std::cerr<<"disatcher::spin:"<<res<<std::endl;
+            if (flags & CanIOFlagLoopback)
+            {
+                handleLoopbackFrame(frame, can_frame);
+            }
+            else
+            {
+                num_frames_processed++;
+                handleFrame(frame, can_frame);
+            }
+            notifyRxFrameListener(can_frame, flags);
+        }
+    }
+    while (sysclock_.getMonotonic() < deadline);
+
+    return num_frames_processed;
+}
+
+int Dispatcher::spinOnce(RxFrame& frame)
+{
+    int num_frames_processed = 0;
+
+    while (true)
+    {
+        CanIOFlags flags = 0;
+        CanRxFrame can_frame;
+        const int res = canio_.receive(can_frame, MonotonicTime(), flags);
+        if (res < 0)
+        {
+            return res;
+        }
+        else if (res > 0)
+        {
+            if (flags & CanIOFlagLoopback)
+            {
+                handleLoopbackFrame(frame, can_frame);
+            }
+            else
+            {
+                num_frames_processed++;
+                handleFrame(frame, can_frame);
+            }
+            notifyRxFrameListener(can_frame, flags);
+        }
+        else
+        {
+            break;      // No frames left
+        }
+    }
+
+    return num_frames_processed;
+}
 
 int Dispatcher::spin(MonotonicTime deadline)
 {

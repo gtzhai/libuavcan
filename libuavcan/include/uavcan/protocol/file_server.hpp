@@ -112,22 +112,23 @@ public:
 class BasicFileServer
 {
     typedef MethodBinder<BasicFileServer*,
-        void (BasicFileServer::*)(const protocol::file::GetInfo::Request&, protocol::file::GetInfo::Response&)>
+        int (BasicFileServer::*)(const protocol::file::GetInfo::Request&, protocol::file::GetInfo::Response&)>
             GetInfoCallback;
 
     typedef MethodBinder<BasicFileServer*,
-        void (BasicFileServer::*)(const protocol::file::Read::Request&, protocol::file::Read::Response&)>
+        int (BasicFileServer::*)(const protocol::file::Read::Request&, protocol::file::Read::Response&)>
             ReadCallback;
 
     ServiceServer<protocol::file::GetInfo, GetInfoCallback> get_info_srv_;
     ServiceServer<protocol::file::Read, ReadCallback> read_srv_;
 
-    void handleGetInfo(const protocol::file::GetInfo::Request& req, protocol::file::GetInfo::Response& resp)
+    int handleGetInfo(const protocol::file::GetInfo::Request& req, protocol::file::GetInfo::Response& resp)
     {
         resp.error.value = backend_.getInfo(req.path.path, resp.size, resp.entry_type);
+        return 0;
     }
 
-    void handleRead(const protocol::file::Read::Request& req, protocol::file::Read::Response& resp)
+    int handleRead(const protocol::file::Read::Request& req, protocol::file::Read::Response& resp)
     {
         uint16_t inout_size = resp.data.capacity();
 
@@ -149,6 +150,7 @@ class BasicFileServer
         {
             resp.data.resize(inout_size);
         }
+        return 0;
     }
 
 protected:
@@ -191,15 +193,15 @@ public:
 class FileServer : protected BasicFileServer
 {
     typedef MethodBinder<FileServer*,
-        void (FileServer::*)(const protocol::file::Write::Request&, protocol::file::Write::Response&)>
+        int (FileServer::*)(const protocol::file::Write::Request&, protocol::file::Write::Response&)>
             WriteCallback;
 
     typedef MethodBinder<FileServer*,
-        void (FileServer::*)(const protocol::file::Delete::Request&, protocol::file::Delete::Response&)>
+        int (FileServer::*)(const protocol::file::Delete::Request&, protocol::file::Delete::Response&)>
             DeleteCallback;
 
     typedef MethodBinder<FileServer*,
-        void (FileServer::*)(const protocol::file::GetDirectoryEntryInfo::Request&,
+        int (FileServer::*)(const protocol::file::GetDirectoryEntryInfo::Request&,
                              protocol::file::GetDirectoryEntryInfo::Response&)>
             GetDirectoryEntryInfoCallback;
 
@@ -207,21 +209,24 @@ class FileServer : protected BasicFileServer
     ServiceServer<protocol::file::Delete, DeleteCallback> delete_srv_;
     ServiceServer<protocol::file::GetDirectoryEntryInfo, GetDirectoryEntryInfoCallback> get_directory_entry_info_srv_;
 
-    void handleWrite(const protocol::file::Write::Request& req, protocol::file::Write::Response& resp)
+    int handleWrite(const protocol::file::Write::Request& req, protocol::file::Write::Response& resp)
     {
         resp.error.value = backend_.write(req.path.path, req.offset, req.data.begin(), req.data.size());
+        return 0;
     }
 
-    void handleDelete(const protocol::file::Delete::Request& req, protocol::file::Delete::Response& resp)
+    int handleDelete(const protocol::file::Delete::Request& req, protocol::file::Delete::Response& resp)
     {
         resp.error.value = backend_.remove(req.path.path);
+        return 0;
     }
 
-    void handleGetDirectoryEntryInfo(const protocol::file::GetDirectoryEntryInfo::Request& req,
+    int handleGetDirectoryEntryInfo(const protocol::file::GetDirectoryEntryInfo::Request& req,
                                      protocol::file::GetDirectoryEntryInfo::Response& resp)
     {
         resp.error.value = backend_.getDirectoryEntryInfo(req.directory_path.path, req.entry_index,
                                                           resp.entry_type, resp.entry_full_path.path);
+        return 0;
     }
 
 public:

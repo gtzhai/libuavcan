@@ -40,7 +40,7 @@ template <
           >
 class UAVCAN_EXPORT PanicListener : Noncopyable
 {
-    typedef MethodBinder<PanicListener*, void (PanicListener::*)(const ReceivedDataStructure<protocol::Panic>&)>
+    typedef MethodBinder<PanicListener*, int (PanicListener::*)(const ReceivedDataStructure<protocol::Panic>&)>
         PanicMsgCallback;
 
     Subscriber<protocol::Panic, PanicMsgCallback> sub_;
@@ -61,7 +61,7 @@ class UAVCAN_EXPORT PanicListener : Noncopyable
         }
     }
 
-    void handleMsg(const ReceivedDataStructure<protocol::Panic>& msg)
+    int handleMsg(const ReceivedDataStructure<protocol::Panic>& msg)
     {
         UAVCAN_TRACE("PanicListener", "Received panic from snid=%i reason=%s",
                      int(msg.getSrcNodeID().get()), msg.reason_text.c_str());
@@ -89,6 +89,7 @@ class UAVCAN_EXPORT PanicListener : Noncopyable
                 invokeCallback(msg);                      // The application can stop us from the callback
             }
         }
+        return 0;
     }
 
 public:

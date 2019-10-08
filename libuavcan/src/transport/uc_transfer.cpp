@@ -11,32 +11,33 @@ namespace uavcan
 /**
  * TransferPriority
  */
-const uint8_t TransferPriority::BitLen;
-const uint8_t TransferPriority::NumericallyMax;
-const uint8_t TransferPriority::NumericallyMin;
+uint8_t TransferPriority::BitLen = 5U;
+uint8_t TransferPriority::NumericallyMax = (1U << BitLen) - 1;
+uint8_t TransferPriority::NumericallyMin = 0;
 
-const TransferPriority TransferPriority::Default((1U << BitLen) / 2);
-const TransferPriority TransferPriority::MiddleLower((1U << BitLen) / 2 + (1U << BitLen) / 4);
-const TransferPriority TransferPriority::OneHigherThanLowest(NumericallyMax - 1);
-const TransferPriority TransferPriority::OneLowerThanHighest(NumericallyMin + 1);
-const TransferPriority TransferPriority::Lowest(NumericallyMax);
+TransferPriority TransferPriority::Default((1U << BitLen) / 2);
+TransferPriority TransferPriority::MiddleLower((1U << BitLen) / 2 + (1U << BitLen) / 4);
+TransferPriority TransferPriority::OneHigherThanLowest(NumericallyMax - 1);
+TransferPriority TransferPriority::OneLowerThanHighest(NumericallyMin + 1);
+TransferPriority TransferPriority::Lowest(NumericallyMax);
 
 /**
  * TransferID
  */
-const uint8_t TransferID::BitLen;
-const uint8_t TransferID::Max;
-const uint8_t TransferID::Half;
+uint8_t TransferID::BitLen = 5U;
+uint8_t TransferID::Max = (1U << BitLen) - 1U;
+uint8_t TransferID::Half = (1U << BitLen) / 2U;
+
 
 /**
  * NodeID
  */
 const uint8_t NodeID::ValueBroadcast;
 const uint8_t NodeID::ValueInvalid;
-const uint8_t NodeID::BitLen;
-const uint8_t NodeID::Max;
-const uint8_t NodeID::MaxRecommendedForRegularNodes;
-const NodeID NodeID::Broadcast(ValueBroadcast);
+uint8_t NodeID::BitLen = 7U;
+uint8_t NodeID::Max = (1U << BitLen) - 1U;
+uint8_t NodeID::MaxRecommendedForRegularNodes = Max - 2;
+NodeID NodeID::Broadcast(ValueBroadcast);
 
 /**
  * TransferID

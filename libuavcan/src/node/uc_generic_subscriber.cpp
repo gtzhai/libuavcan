@@ -3,6 +3,7 @@
  */
 
 #include <uavcan/node/generic_subscriber.hpp>
+#include <iostream>
 
 namespace uavcan
 {
@@ -13,6 +14,7 @@ int GenericSubscriberBase::genericStart(TransferListener* listener,
     if (listener == UAVCAN_NULLPTR)
     {
         UAVCAN_ASSERT(0);
+        std::cerr<<"generic subscriber base start error1:"<<ErrLogic<<std::endl;
         return -ErrLogic;
     }
     stop(listener);

@@ -45,7 +45,7 @@ public:
 class AllocationRequestManager
 {
     typedef MethodBinder<AllocationRequestManager*,
-                         void (AllocationRequestManager::*)(const ReceivedDataStructure<Allocation>&)>
+                         int (AllocationRequestManager::*)(const ReceivedDataStructure<Allocation>&)>
         AllocationCallback;
 
     const MonotonicDuration stage_timeout_;
@@ -125,14 +125,14 @@ class AllocationRequestManager
         }
     }
 
-    void handleAllocation(const ReceivedDataStructure<Allocation>& msg)
+    int handleAllocation(const ReceivedDataStructure<Allocation>& msg)
     {
         trace(TraceAllocationActivity, msg.getSrcNodeID().get());
         last_activity_timestamp_ = msg.getMonotonicTimestamp();
 
         if (!msg.isAnonymousTransfer())
         {
-            return;         // This is a response from another allocator, ignore
+            return 0;         // This is a response from another allocator, ignore
         }
 
         /*
@@ -152,20 +152,20 @@ class AllocationRequestManager
         if (request_stage == InvalidStage)
         {
             trace(TraceAllocationBadRequest, msg.unique_id.size());
-            return;             // Malformed request - ignore without resetting
+            return 0;             // Malformed request - ignore without resetting
         }
 
         const uint8_t expected_stage = getExpectedStage();
         if (expected_stage == InvalidStage)
         {
             UAVCAN_ASSERT(0);
-            return;
+            return 0;
         }
 
         if (request_stage != expected_stage)
         {
             trace(TraceAllocationUnexpectedStage, request_stage);
-            return;             // Ignore - stage mismatch
+            return 0;             // Ignore - stage mismatch
         }
 
         const uint8_t max_expected_bytes =
@@ -174,7 +174,7 @@ class AllocationRequestManager
         if (msg.unique_id.size() > max_expected_bytes)
         {
             trace(TraceAllocationBadRequest, msg.unique_id.size());
-            return;             // Malformed request
+            return 0;             // Malformed request
         }
 
         /*
@@ -228,6 +228,7 @@ class AllocationRequestManager
          * It is super important to update timestamp only if the request has been processed successfully.
          */
         last_message_timestamp_ = msg.getMonotonicTimestamp();
+        return 0;
     }
 
 public:

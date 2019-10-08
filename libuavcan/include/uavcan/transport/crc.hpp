@@ -75,6 +75,73 @@ public:
     uint16_t get() const { return value_; }
 };
 
-}
+class UAVCAN_EXPORT TransferCRC32
+{
+    static const uint32_t Table[256];
 
+    uint32_t value_;
+
+public:
+    enum { NumBytes = 4 };
+
+    TransferCRC32()
+        : value_(0xFFFFFFFFU)
+    { }
+
+    void add(uint8_t byte)
+    {
+        value_ = uint32_t(uint32_t((value_ << 8) ^ Table[uint32_t((value_ >> 8) ^ byte) & 0xFFU]) & 0xFFFFFFFFU);
+    }
+
+    void add(const uint8_t* bytes, unsigned len)
+    {
+        UAVCAN_ASSERT(bytes);
+        while (len--)
+        {
+            add(*bytes++);
+        }
+    }
+
+    uint32_t get() const { return value_; }
+};
+
+class UAVCAN_EXPORT TransferCRC48
+{
+    uint64_t value_;
+
+public:
+    enum { NumBytes = 6 };
+
+    TransferCRC48()
+        : value_(0x000000000000UL)
+    { }
+
+    void add(uint8_t byte)
+    {
+        value_ ^= uint64_t(byte);
+        for (uint8_t bits = 0; bits < 8; bits++)
+        {
+            int bit = value_&0x1;
+            value_ >>= 1;
+            if (bit)
+            {
+          	    value_ ^= 0xeadb71093528L;
+            }
+        }
+    }
+
+    void add(const uint8_t* bytes, unsigned len)
+    {
+        UAVCAN_ASSERT(bytes);
+        while (len--)
+        {
+            add(*bytes++);
+        }
+        value_ ^= 0x130edf575accL;
+    }
+
+    uint64_t get() const { return value_; }
+};
+}
 #endif // UAVCAN_TRANSPORT_CRC_HPP_INCLUDED
+

@@ -261,6 +261,7 @@ public:
         return size_;
     }
 
+
     SizeType capacity() const { return MaxSize; }
 
     void clear() { size_ = 0; }
@@ -754,6 +755,22 @@ public:
     void resize(SizeType new_size)
     {
         resize(new_size, ValueType());
+    }
+
+    /**
+     * Only for dynamic arrays. Range checking.
+     */
+    void resize(SizeType new_size, const ValueType *filler)
+    {
+        StaticAssert<IsDynamic>::check();
+        Base::clear();
+
+        SizeType cnt = new_size;
+
+        for(int i=0; i<cnt; i++)
+        {
+            push_back(filler[i]);
+        }
     }
 
     /**

@@ -5,6 +5,7 @@
 #include <uavcan/transport/transfer_buffer.hpp>
 #include <cassert>
 #include <cstdlib>
+#include <stdio.h>
 
 namespace uavcan
 {
@@ -38,6 +39,7 @@ int StaticTransferBufferImpl::write(unsigned offset, const uint8_t* data, unsign
         UAVCAN_ASSERT(0);
         return -ErrInvalidParam;
     }
+    //fprintf(stderr, "StaticTransferBuffer write:off:%d, len:%d, max:%d, size:%d\n", offset, len, max_write_pos_, size_);
     if (offset >= size_)
     {
         return 0;
@@ -150,6 +152,7 @@ void TransferBufferManagerEntry::destroy(TransferBufferManagerEntry*& obj, IPool
 
 int TransferBufferManagerEntry::read(unsigned offset, uint8_t* data, unsigned len) const
 {
+    //fprintf(stderr, "TransferBuffer read:off:%d, len:%d, max:%d\n", offset, len, max_write_pos_);
     if (!data)
     {
         UAVCAN_ASSERT(0);
@@ -180,17 +183,32 @@ int TransferBufferManagerEntry::read(unsigned offset, uint8_t* data, unsigned le
         p = p->getNextListNode();
     }
 
+#if 0
+    for(int i=0; i<len; i++)
+    {
+        fprintf(stderr, "TransferBuffer read:payload[%d]:%x\n", i, data[i]);
+    }
+#endif
+
     UAVCAN_ASSERT(left_to_read == 0);
     return int(len);
 }
 
 int TransferBufferManagerEntry::write(unsigned offset, const uint8_t* data, unsigned len)
 {
+    //fprintf(stderr, "TransferBuffer write:off:%d, len:%d, max:%d, size:%d\n", offset, len, max_write_pos_, max_size_);
     if (!data)
     {
         UAVCAN_ASSERT(0);
         return -ErrInvalidParam;
     }
+
+#if 0
+    for(int i=0; i<len; i++)
+    {
+        fprintf(stderr, "TransferBuffer write:payload[%d]:%d\n", i, data[i]);
+    }
+#endif
 
     if (offset >= max_size_)
     {

@@ -19,13 +19,13 @@ namespace uavcan
 class UAVCAN_EXPORT TransportStatsProvider : Noncopyable
 {
     typedef MethodBinder<const TransportStatsProvider*,
-                         void (TransportStatsProvider::*)(const protocol::GetTransportStats::Request&,
+                         int (TransportStatsProvider::*)(const protocol::GetTransportStats::Request&,
                                                           protocol::GetTransportStats::Response&) const>
             GetTransportStatsCallback;
 
     ServiceServer<protocol::GetTransportStats, GetTransportStatsCallback> srv_;
 
-    void handleGetTransportStats(const protocol::GetTransportStats::Request&,
+    int handleGetTransportStats(const protocol::GetTransportStats::Request&,
                                  protocol::GetTransportStats::Response& resp) const
     {
         const TransferPerfCounter& perf = srv_.getNode().getDispatcher().getTransferPerfCounter();
@@ -43,6 +43,7 @@ class UAVCAN_EXPORT TransportStatsProvider : Noncopyable
             stats.frames_rx = can_perf.frames_rx;
             resp.can_iface_stats.push_back(stats);
         }
+        return 0;
     }
 
 public:

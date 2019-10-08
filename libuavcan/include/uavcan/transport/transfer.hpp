@@ -30,16 +30,16 @@ class UAVCAN_EXPORT TransferPriority
     uint8_t value_;
 
 public:
-    static const uint8_t BitLen = 5U;
-    static const uint8_t NumericallyMax = (1U << BitLen) - 1;
-    static const uint8_t NumericallyMin = 0;
+    static uint8_t BitLen;//default is 5U
+    static uint8_t NumericallyMax;
+    static uint8_t NumericallyMin;
 
     /// This priority is used by default
-    static const TransferPriority Default;
-    static const TransferPriority MiddleLower;
-    static const TransferPriority OneHigherThanLowest;
-    static const TransferPriority OneLowerThanHighest;
-    static const TransferPriority Lowest;
+    static TransferPriority Default;
+    static TransferPriority MiddleLower;
+    static TransferPriority OneHigherThanLowest;
+    static TransferPriority OneLowerThanHighest;
+    static TransferPriority Lowest;
 
     TransferPriority() : value_(0xFF) { }
 
@@ -49,13 +49,27 @@ public:
         UAVCAN_ASSERT(isValid());
     }
 
-    template <uint8_t Percent>
-    static TransferPriority fromPercent()
+    static void setBitLen(uint8_t len)
     {
-        StaticAssert<(Percent <= 100)>::check();
-        enum { Result = ((100U - Percent) * NumericallyMax) / 100U };
-        StaticAssert<(Result <= NumericallyMax)>::check();
-        StaticAssert<(Result >= NumericallyMin)>::check();
+        BitLen = len;
+        NumericallyMax = (1U << BitLen) - 1;
+        NumericallyMin = 0;
+
+        Default.value_ = ((1U << BitLen) / 2);
+        MiddleLower.value_ = ((1U << BitLen) / 2 + (1U << BitLen) / 4);
+        OneHigherThanLowest.value_ = (NumericallyMax - 1);
+        OneLowerThanHighest.value_ = (NumericallyMin + 1);
+        Lowest.value_ = (NumericallyMax);
+    }
+
+    static TransferPriority fromPercent(uint8_t Percent)
+    {
+        uint8_t  Result = 0;
+
+        //StaticAssert<(Percent <= 100)>::check();
+        Result = ((100U - Percent) * NumericallyMax) / 100U ;
+        //StaticAssert<(Result <= NumericallyMax)>::check();
+        //StaticAssert<(Result >= NumericallyMin)>::check();
         return TransferPriority(Result);
     }
 
@@ -73,9 +87,9 @@ class UAVCAN_EXPORT TransferID
     uint8_t value_;
 
 public:
-    static const uint8_t BitLen = 5U;
-    static const uint8_t Max = (1U << BitLen) - 1U;
-    static const uint8_t Half = (1U << BitLen) / 2U;
+    static uint8_t BitLen;//default is 5U
+    static uint8_t Max;
+    static uint8_t Half;
 
     TransferID()
         : value_(0)
@@ -90,6 +104,13 @@ public:
 
     bool operator!=(TransferID rhs) const { return !operator==(rhs); }
     bool operator==(TransferID rhs) const { return get() == rhs.get(); }
+
+    static void setBitLen(uint8_t len)
+    {
+        BitLen = len; 
+        Max = (1U << BitLen) - 1U;
+        Half = (1U << BitLen) / 2U;
+    }
 
     void increment()
     {
@@ -108,7 +129,6 @@ public:
     int computeForwardDistance(TransferID rhs) const;
 };
 
-
 class UAVCAN_EXPORT NodeID
 {
     static const uint8_t ValueBroadcast = 0;
@@ -116,10 +136,11 @@ class UAVCAN_EXPORT NodeID
     uint8_t value_;
 
 public:
-    static const uint8_t BitLen = 7U;
-    static const uint8_t Max = (1U << BitLen) - 1U;
-    static const uint8_t MaxRecommendedForRegularNodes = Max - 2;
-    static const NodeID Broadcast;
+    static const uint8_t AbsMax = (1U << 7) - 1;
+    static uint8_t BitLen;//default is 7U
+    static uint8_t Max;
+    static uint8_t MaxRecommendedForRegularNodes;
+    static NodeID Broadcast;
 
     NodeID() : value_(ValueInvalid) { }
 
@@ -127,6 +148,13 @@ public:
         : value_(value)
     {
         UAVCAN_ASSERT(isValid());
+    }
+
+    static void setBitLen(uint8_t len)
+    {
+        BitLen = len;
+        Max = (1U << BitLen) - 1U;
+        MaxRecommendedForRegularNodes = Max - 2;
     }
 
     uint8_t get() const { return value_; }
@@ -143,7 +171,6 @@ public:
     bool operator<=(NodeID rhs) const { return value_ <= rhs.value_; }
     bool operator>=(NodeID rhs) const { return value_ >= rhs.value_; }
 };
-
 }
 
 #endif // UAVCAN_TRANSPORT_TRANSFER_HPP_INCLUDED

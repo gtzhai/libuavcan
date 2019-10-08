@@ -92,6 +92,26 @@ TransferCRC DataTypeSignature::toTransferCRC() const
     return tcrc;
 }
 
+TransferCRC32 DataTypeSignature::toTransferCRC32() const
+{
+    TransferCRC32 tcrc;
+    for (int i = 0; i < 64; i += 8)    // LSB first
+    {
+        tcrc.add((value_ >> i) & 0xFF);
+    }
+    return tcrc;
+}
+
+TransferCRC48 DataTypeSignature::toTransferCRC48() const
+{
+    TransferCRC48 tcrc;
+    for (int i = 0; i < 64; i += 8)    // LSB first
+    {
+        tcrc.add((value_ >> i) & 0xFF);
+    }
+    return tcrc;
+}
+
 /*
  * DataTypeDescriptor
  */

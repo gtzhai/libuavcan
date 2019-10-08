@@ -137,7 +137,7 @@ class FirmwareUpdateTrigger : public INodeInfoListener,
                               private TimerBase
 {
     typedef MethodBinder<FirmwareUpdateTrigger*,
-        void (FirmwareUpdateTrigger::*)(const ServiceCallResult<protocol::file::BeginFirmwareUpdate>&)>
+        int (FirmwareUpdateTrigger::*)(const ServiceCallResult<protocol::file::BeginFirmwareUpdate>&)>
             BeginFirmwareUpdateResponseCallback;
 
     typedef IFirmwareVersionChecker::FirmwareFilePath FirmwareFilePath;
@@ -275,20 +275,20 @@ class FirmwareUpdateTrigger : public INodeInfoListener,
         return last_queried_node_id_;
     }
 
-    void handleBeginFirmwareUpdateResponse(const ServiceCallResult<protocol::file::BeginFirmwareUpdate>& result)
+    int handleBeginFirmwareUpdateResponse(const ServiceCallResult<protocol::file::BeginFirmwareUpdate>& result)
     {
         if (!result.isSuccessful())
         {
             UAVCAN_TRACE("FirmwareUpdateTrigger", "Request to %d has timed out, will retry",
                          int(result.getCallID().server_node_id.get()));
-            return;
+            return 0;
         }
 
         FirmwareFilePath* const old_path = pending_nodes_.access(result.getCallID().server_node_id);
         if (old_path == UAVCAN_NULLPTR)
         {
             // The entry has been removed, assuming that it's not needed anymore
-            return;
+            return 0;
         }
 
         const bool confirmed =
@@ -318,6 +318,7 @@ class FirmwareUpdateTrigger : public INodeInfoListener,
                 pending_nodes_.remove(result.getCallID().server_node_id);
             }
         }
+        return 0;
     }
 
     virtual void handleTimerEvent(const TimerEvent&)

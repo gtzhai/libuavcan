@@ -31,7 +31,7 @@ namespace uavcan
 class UAVCAN_EXPORT DynamicNodeIDClient : private TimerBase
 {
     typedef MethodBinder<DynamicNodeIDClient*,
-                         void (DynamicNodeIDClient::*)
+                         int (DynamicNodeIDClient::*)
                              (const ReceivedDataStructure<protocol::dynamic_node_id::Allocation>&)>
         AllocationCallback;
 
@@ -60,7 +60,7 @@ class UAVCAN_EXPORT DynamicNodeIDClient : private TimerBase
 
     virtual void handleTimerEvent(const TimerEvent&);
 
-    void handleAllocation(const ReceivedDataStructure<protocol::dynamic_node_id::Allocation>& msg);
+    int handleAllocation(const ReceivedDataStructure<protocol::dynamic_node_id::Allocation>& msg);
 
 public:
     typedef protocol::HardwareVersion::FieldTypes::unique_id UniqueID;

@@ -28,7 +28,7 @@ namespace uavcan
 class UAVCAN_EXPORT GlobalTimeSyncSlave : Noncopyable
 {
     typedef MethodBinder<GlobalTimeSyncSlave*,
-                         void (GlobalTimeSyncSlave::*)(const ReceivedDataStructure<protocol::GlobalTimeSync>&)>
+                         int (GlobalTimeSyncSlave::*)(const ReceivedDataStructure<protocol::GlobalTimeSync>&)>
         GlobalTimeSyncCallback;
 
     Subscriber<protocol::GlobalTimeSync, GlobalTimeSyncCallback> sub_;
@@ -121,7 +121,7 @@ class UAVCAN_EXPORT GlobalTimeSyncSlave : Noncopyable
         }
     }
 
-    void handleGlobalTimeSync(const ReceivedDataStructure<protocol::GlobalTimeSync>& msg)
+    int handleGlobalTimeSync(const ReceivedDataStructure<protocol::GlobalTimeSync>& msg)
     {
         if (msg.getTransferType() == TransferTypeMessageBroadcast)
         {
@@ -131,6 +131,7 @@ class UAVCAN_EXPORT GlobalTimeSyncSlave : Noncopyable
         {
             UAVCAN_TRACE("GlobalTimeSyncSlave", "Invalid transfer type %i", int(msg.getTransferType()));
         }
+        return 0;
     }
 
 public:

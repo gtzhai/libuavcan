@@ -127,8 +127,10 @@ class UAVCAN_EXPORT Dispatcher : Noncopyable
     bool self_node_id_is_set_;
 
     void handleFrame(const CanRxFrame& can_frame);
-
     void handleLoopbackFrame(const CanRxFrame& can_frame);
+
+    void handleFrame(RxFrame& frame, const CanRxFrame& can_frame);
+    void handleLoopbackFrame(RxFrame& frame, const CanRxFrame& can_frame);
 
     void notifyRxFrameListener(const CanRxFrame& can_frame, CanIOFlags flags);
 
@@ -148,11 +150,13 @@ public:
      * This version returns strictly when the deadline is reached.
      */
     int spin(MonotonicTime deadline);
+    int spin(RxFrame& frame, MonotonicTime deadline);
 
     /**
      * This version does not return until all available frames are processed.
      */
     int spinOnce();
+    int spinOnce(RxFrame& frame);
 
     /**
      * Refer to CanIOManager::send() for the parameter description

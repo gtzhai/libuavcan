@@ -106,6 +106,7 @@ public:
      * Returns negative error code.
      */
     int spin(MonotonicTime deadline);
+    int spin(RxFrame& frame, MonotonicTime deadline);
 
     /**
      * Non-blocking version of @ref spin() - spins until all pending frames and events are processed,
@@ -113,6 +114,7 @@ public:
      * Returns negative error code.
      */
     int spinOnce();
+    int spinOnce(RxFrame& frame);
 
     DeadlineScheduler& getDeadlineScheduler() { return deadline_scheduler_; }
 

@@ -38,13 +38,13 @@ public:
 class UAVCAN_EXPORT RestartRequestServer : Noncopyable
 {
     typedef MethodBinder<const RestartRequestServer*,
-                         void (RestartRequestServer::*)(const ReceivedDataStructure<protocol::RestartNode::Request>&,
+                         int (RestartRequestServer::*)(const ReceivedDataStructure<protocol::RestartNode::Request>&,
                                                         protocol::RestartNode::Response&) const> RestartNodeCallback;
 
     ServiceServer<protocol::RestartNode, RestartNodeCallback> srv_;
     IRestartRequestHandler* handler_;
 
-    void handleRestartNode(const ReceivedDataStructure<protocol::RestartNode::Request>& request,
+    int handleRestartNode(const ReceivedDataStructure<protocol::RestartNode::Request>& request,
                            protocol::RestartNode::Response& response) const
     {
         UAVCAN_TRACE("RestartRequestServer", "Request from snid=%i", int(request.getSrcNodeID().get()));
@@ -62,6 +62,7 @@ class UAVCAN_EXPORT RestartRequestServer : Noncopyable
             UAVCAN_TRACE("RestartRequestServer", "Invalid magic number 0x%llx",
                          static_cast<unsigned long long>(request.magic_number));
         }
+        return 0;
     }
 
 public:

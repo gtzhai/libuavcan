@@ -40,7 +40,7 @@ private:
     MonotonicTime this_transfer_ts_;
     UtcTime first_frame_ts_;
     uint16_t transfer_interval_msec_;
-    uint16_t this_transfer_crc_;
+    uint64_t this_transfer_crc_;
 
     uint16_t buffer_write_pos_;
 
@@ -86,7 +86,7 @@ public:
     MonotonicTime getLastTransferTimestampMonotonic() const { return prev_transfer_ts_; }
     UtcTime getLastTransferTimestampUtc() const { return first_frame_ts_; }
 
-    uint16_t getLastTransferCrc() const { return this_transfer_crc_; }
+    uint64_t getLastTransferCrc() const { return this_transfer_crc_; }
 
     MonotonicDuration getInterval() const { return MonotonicDuration::fromMSec(transfer_interval_msec_); }
 };

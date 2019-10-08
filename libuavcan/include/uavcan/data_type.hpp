@@ -15,6 +15,8 @@ namespace uavcan
 {
 
 class UAVCAN_EXPORT TransferCRC;
+class UAVCAN_EXPORT TransferCRC32;
+class UAVCAN_EXPORT TransferCRC48;
 
 enum DataTypeKind
 {
@@ -117,6 +119,8 @@ public:
     void extend(DataTypeSignature dts);
 
     TransferCRC toTransferCRC() const;
+    TransferCRC32 toTransferCRC32() const;
+    TransferCRC48 toTransferCRC48() const;
 
     uint64_t get() const { return value_; }
 

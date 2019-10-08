@@ -72,18 +72,18 @@ public:
     };
 
 private:
-    typedef MethodBinder<RaftCore*, void (RaftCore::*)(const ReceivedDataStructure<AppendEntries::Request>&,
+    typedef MethodBinder<RaftCore*, int (RaftCore::*)(const ReceivedDataStructure<AppendEntries::Request>&,
                                                        ServiceResponseDataStructure<AppendEntries::Response>&)>
         AppendEntriesCallback;
 
-    typedef MethodBinder<RaftCore*, void (RaftCore::*)(const ServiceCallResult<AppendEntries>&)>
+    typedef MethodBinder<RaftCore*, int (RaftCore::*)(const ServiceCallResult<AppendEntries>&)>
         AppendEntriesResponseCallback;
 
-    typedef MethodBinder<RaftCore*, void (RaftCore::*)(const ReceivedDataStructure<RequestVote::Request>&,
+    typedef MethodBinder<RaftCore*, int (RaftCore::*)(const ReceivedDataStructure<RequestVote::Request>&,
                                                        ServiceResponseDataStructure<RequestVote::Response>&)>
         RequestVoteCallback;
 
-    typedef MethodBinder<RaftCore*, void (RaftCore::*)(const ServiceCallResult<RequestVote>&)>
+    typedef MethodBinder<RaftCore*, int (RaftCore::*)(const ServiceCallResult<RequestVote>&)>
         RequestVoteResponseCallback;
 
     struct PendingAppendEntriesFields
@@ -403,7 +403,7 @@ private:
         }
     }
 
-    void handleAppendEntriesRequest(const ReceivedDataStructure<AppendEntries::Request>& request,
+    int  handleAppendEntriesRequest(const ReceivedDataStructure<AppendEntries::Request>& request,
                                     ServiceResponseDataStructure<AppendEntries::Response>& response)
     {
         checkInvariants();
@@ -414,7 +414,7 @@ private:
             {
                 trace(TraceRaftRequestIgnored, request.getSrcNodeID().get());
                 response.setResponseEnabled(false);
-                return;
+                return 0;
             }
             else
             {
@@ -435,7 +435,7 @@ private:
             {
                 handlePersistentStateUpdateError(res);
                 response.setResponseEnabled(false);
-                return;
+                return 0;
             }
 
             res = persistent_state_.resetVotedFor();
@@ -443,7 +443,7 @@ private:
             {
                 handlePersistentStateUpdateError(res);
                 response.setResponseEnabled(false);
-                return;
+                return 0;
             }
         }
 
@@ -460,7 +460,7 @@ private:
         if (request.term < persistent_state_.getCurrentTerm())
         {
             response.setResponseEnabled(true);
-            return;
+            return 0;
         }
 
         registerActivity();
@@ -474,7 +474,7 @@ private:
         if (prev_entry == UAVCAN_NULLPTR)
         {
             response.setResponseEnabled(true);
-            return;
+            return 0;
         }
 
         /*
@@ -490,7 +490,7 @@ private:
             {
                 trace(TraceRaftPersistStateUpdateError, res);
             }
-            return;
+            return 0;
         }
 
         /*
@@ -505,7 +505,7 @@ private:
             {
                 trace(TraceRaftPersistStateUpdateError, res);
                 response.setResponseEnabled(false);
-                return;
+                return 0;
             }
         }
 
@@ -516,7 +516,7 @@ private:
             {
                 trace(TraceRaftPersistStateUpdateError, res);
                 response.setResponseEnabled(false);
-                return;                     // Response will not be sent, the server will assume that we're dead
+                return 0;                     // Response will not be sent, the server will assume that we're dead
             }
         }
 
@@ -532,16 +532,17 @@ private:
 
         response.setResponseEnabled(true);
         response.success = true;
+        return 0;
     }
 
-    void handleAppendEntriesResponse(const ServiceCallResult<AppendEntries>& result)
+    int handleAppendEntriesResponse(const ServiceCallResult<AppendEntries>& result)
     {
         UAVCAN_ASSERT(server_state_ == ServerStateLeader);  // When state switches, all requests must be cancelled
         checkInvariants();
 
         if (!result.isSuccessful())
         {
-            return;
+            return 0;
         }
 
         if (result.getResponse().term > persistent_state_.getCurrentTerm())
@@ -567,9 +568,10 @@ private:
 
         pending_append_entries_fields_ = PendingAppendEntriesFields();
         // Rest of the logic is implemented in periodic update handlers.
+        return 0;
     }
 
-    void handleRequestVoteRequest(const ReceivedDataStructure<RequestVote::Request>& request,
+    int handleRequestVoteRequest(const ReceivedDataStructure<RequestVote::Request>& request,
                                   ServiceResponseDataStructure<RequestVote::Response>& response)
     {
         checkInvariants();
@@ -579,7 +581,7 @@ private:
         {
             trace(TraceRaftRequestIgnored, request.getSrcNodeID().get());
             response.setResponseEnabled(false);
-            return;
+            return 0;
         }
 
         UAVCAN_ASSERT(response.isResponseEnabled());  // This is default
@@ -597,7 +599,7 @@ private:
             {
                 handlePersistentStateUpdateError(res);
                 response.setResponseEnabled(false);
-                return;
+                return 0;
             }
 
             res = persistent_state_.resetVotedFor();
@@ -605,7 +607,7 @@ private:
             {
                 handlePersistentStateUpdateError(res);
                 response.setResponseEnabled(false);
-                return;
+                return 0;
             }
         }
 
@@ -637,20 +639,21 @@ private:
                 {
                     trace(TraceRaftPersistStateUpdateError, res);
                     response.setResponseEnabled(false);
-                    return;
+                    return 0;
                 }
             }
         }
+        return 0;
     }
 
-    void handleRequestVoteResponse(const ServiceCallResult<RequestVote>& result)
+    int handleRequestVoteResponse(const ServiceCallResult<RequestVote>& result)
     {
         UAVCAN_ASSERT(server_state_ == ServerStateCandidate); // When state switches, all requests must be cancelled
         checkInvariants();
 
         if (!result.isSuccessful())
         {
-            return;
+            return 0;
         }
 
         trace(TraceRaftVoteRequestSucceeded, result.getCallID().server_node_id.get());
@@ -668,6 +671,7 @@ private:
         }
         // Rest of the logic is implemented in periodic update handlers.
         // I'm no fan of asynchronous programming. At all.
+        return 0;
     }
 
     virtual void handleTimerEvent(const TimerEvent&)

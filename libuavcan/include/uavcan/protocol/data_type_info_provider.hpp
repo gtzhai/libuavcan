@@ -10,6 +10,7 @@
 #include <uavcan/build_config.hpp>
 #include <uavcan/protocol/GetDataTypeInfo.hpp>
 #include <uavcan/debug.hpp>
+#include <iostream>
 
 namespace uavcan
 {
@@ -21,7 +22,7 @@ namespace uavcan
 class UAVCAN_EXPORT DataTypeInfoProvider : Noncopyable
 {
     typedef MethodBinder<DataTypeInfoProvider*,
-                         void (DataTypeInfoProvider::*)(const protocol::GetDataTypeInfo::Request&,
+                         int (DataTypeInfoProvider::*)(const protocol::GetDataTypeInfo::Request&,
                                                         protocol::GetDataTypeInfo::Response&)> GetDataTypeInfoCallback;
 
     ServiceServer<protocol::GetDataTypeInfo, GetDataTypeInfoCallback> gdti_srv_;
@@ -33,7 +34,7 @@ class UAVCAN_EXPORT DataTypeInfoProvider : Noncopyable
         return (kind == DataTypeKindMessage) || (kind == DataTypeKindService);
     }
 
-    void handleGetDataTypeInfoRequest(const protocol::GetDataTypeInfo::Request& request,
+    int handleGetDataTypeInfoRequest(const protocol::GetDataTypeInfo::Request& request,
                                       protocol::GetDataTypeInfo::Response& response)
     {
         /*
@@ -50,7 +51,7 @@ class UAVCAN_EXPORT DataTypeInfoProvider : Noncopyable
             {
                 UAVCAN_TRACE("DataTypeInfoProvider", "GetDataTypeInfo request with invalid DataTypeKind %i",
                              static_cast<int>(request.kind.value));
-                return;
+                return 0;
             }
 
             desc = GlobalDataTypeRegistry::instance().find(DataTypeKind(request.kind.value), request.id);
@@ -67,7 +68,7 @@ class UAVCAN_EXPORT DataTypeInfoProvider : Noncopyable
             UAVCAN_TRACE("DataTypeInfoProvider",
                          "Cannot process GetDataTypeInfo for nonexistent type: dtid=%i dtk=%i name='%s'",
                          static_cast<int>(request.id), static_cast<int>(request.kind.value), request.name.c_str());
-            return;
+            return 0;
         }
 
         UAVCAN_TRACE("DataTypeInfoProvider", "GetDataTypeInfo request for %s", desc->toString().c_str());
@@ -105,6 +106,7 @@ class UAVCAN_EXPORT DataTypeInfoProvider : Noncopyable
         {
             UAVCAN_ASSERT(0); // That means that GDTR somehow found a type of an unknown kind. The horror.
         }
+        return 0;
     }
 
 public:
@@ -119,6 +121,7 @@ public:
         res = gdti_srv_.start(GetDataTypeInfoCallback(this, &DataTypeInfoProvider::handleGetDataTypeInfoRequest));
         if (res < 0)
         {
+            std::cerr<<__func__<<"dtp error"<<std::endl;
             goto fail;
         }
 

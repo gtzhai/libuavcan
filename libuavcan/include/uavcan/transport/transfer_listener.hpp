@@ -103,6 +103,8 @@ class UAVCAN_EXPORT TransferListener : public LinkedListNode<TransferListener>
     Map<TransferBufferManagerKey, TransferReceiver> receivers_;
     TransferPerfCounter& perf_;
     const TransferCRC crc_base_;                      ///< Pre-initialized with data type hash, thus constant
+    const TransferCRC32 crc_base32_;                      ///< Pre-initialized with data type hash, thus constant
+    const TransferCRC48 crc_base48_;                      ///< Pre-initialized with data type hash, thus constant
     bool allow_anonymous_transfers_;
 
     class TimedOutReceiverPredicate
@@ -119,7 +121,9 @@ class UAVCAN_EXPORT TransferListener : public LinkedListNode<TransferListener>
         bool operator()(const TransferBufferManagerKey& key, const TransferReceiver& value) const;
     };
 
-    bool checkPayloadCrc(const uint16_t compare_with, const ITransferBuffer& tbb) const;
+    bool checkPayloadCrc(const uint64_t compare_with, const ITransferBuffer& tbb) const;
+    bool checkPayloadCrc32(const uint64_t compare_with, const ITransferBuffer& tbb) const;
+    bool checkPayloadCrc48(const uint64_t compare_with, const ITransferBuffer& tbb) const;
 
 protected:
     void handleReception(TransferReceiver& receiver, const RxFrame& frame, TransferBufferAccessor& tba);
@@ -135,6 +139,8 @@ public:
         , receivers_(allocator)
         , perf_(perf)
         , crc_base_(data_type.getSignature().toTransferCRC())
+        , crc_base32_(data_type.getSignature().toTransferCRC32())
+        , crc_base48_(data_type.getSignature().toTransferCRC48())
         , allow_anonymous_transfers_(false)
     { }
 

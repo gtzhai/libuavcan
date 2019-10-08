@@ -34,7 +34,7 @@ public:
 
 private:
     typedef MethodBinder<ClusterManager*,
-                         void (ClusterManager::*)
+                         int (ClusterManager::*)
                              (const ReceivedDataStructure<Discovery>&)>
         DiscoveryCallback;
 
@@ -134,7 +134,7 @@ private:
         }
     }
 
-    void handleDiscovery(const ReceivedDataStructure<Discovery>& msg)
+    int handleDiscovery(const ReceivedDataStructure<Discovery>& msg)
     {
         tracer_.onEvent(TraceRaftDiscoveryReceived, msg.getSrcNodeID().get());
 
@@ -146,7 +146,7 @@ private:
         {
             tracer_.onEvent(TraceRaftBadClusterSizeReceived, msg.configured_cluster_size);
             getNode().registerInternalFailure("Bad Raft cluster size");
-            return;
+            return 0;
         }
 
         /*
@@ -173,6 +173,7 @@ private:
         {
             startDiscoveryPublishingTimerIfNotRunning();
         }
+        return 0;
     }
 
     void startDiscoveryPublishingTimerIfNotRunning()

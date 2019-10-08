@@ -17,6 +17,7 @@
 #if UAVCAN_CPP_VERSION >= UAVCAN_CPP11
 # include <functional>
 #endif
+#include <iostream>
 
 namespace uavcan
 {
@@ -323,12 +324,14 @@ public:
      * Returns negative error code.
      */
     int call(NodeID server_node_id, const RequestType& request);
+    int call(Frame& frame, NodeID server_node_id, const RequestType& request);
 
     /**
      * Same as plain @ref call() above, but this overload also returns the call ID of the new call.
      * The call ID structure can be used to cancel this request later if needed.
      */
     int call(NodeID server_node_id, const RequestType& request, ServiceCallID& out_call_id);
+    int call(Frame& frame, NodeID server_node_id, const RequestType& request, ServiceCallID& out_call_id);
 
     /**
      * Cancels certain call referred via call ID structure.
@@ -418,17 +421,28 @@ void ServiceClient<DataType_, Callback_>::invokeCallback(ServiceCallResultType& 
 template <typename DataType_, typename Callback_>
 bool ServiceClient<DataType_, Callback_>::shouldAcceptFrame(const RxFrame& frame) const
 {
+    //std::cerr<<"service client should accpet frame in"<<std::endl;
+
     UAVCAN_ASSERT(frame.getTransferType() == TransferTypeServiceResponse); // Other types filtered out by dispatcher
 
-    return UAVCAN_NULLPTR != call_registry_.find(CallStateMatchingPredicate(ServiceCallID(frame.getSrcNodeID(),
-                                                                                          frame.getTransferID())));
 
+    if(frame.getFrameType() == 0)
+    {
+        return UAVCAN_NULLPTR != call_registry_.find(CallStateMatchingPredicate(ServiceCallID(frame.getSrcNodeID(),
+                                                                                          frame.getTransferID())));
+    }
+    else
+    {
+        return true;
+    }
 }
 
 template <typename DataType_, typename Callback_>
 void ServiceClient<DataType_, Callback_>::handleReceivedDataStruct(ReceivedDataStructure<ResponseType>& response)
 {
+    //std::cerr<<"service client handle received data in"<<std::endl;
     UAVCAN_ASSERT(response.getTransferType() == TransferTypeServiceResponse);
+
 
     ServiceCallID call_id(response.getSrcNodeID(), response.getTransferID());
     cancelCall(call_id);
@@ -492,6 +506,13 @@ int ServiceClient<DataType_, Callback_>::call(NodeID server_node_id, const Reque
 }
 
 template <typename DataType_, typename Callback_>
+int ServiceClient<DataType_, Callback_>::call(Frame& frame, NodeID server_node_id, const RequestType& request)
+{
+   ServiceCallID dummy;
+   return call(frame, server_node_id, request, dummy);
+}
+
+template <typename DataType_, typename Callback_>
 int ServiceClient<DataType_, Callback_>::call(NodeID server_node_id, const RequestType& request,
                                               ServiceCallID& out_call_id)
 {
@@ -539,6 +560,70 @@ int ServiceClient<DataType_, Callback_>::call(NodeID server_node_id, const Reque
      * Publishing the request
      */
     const int publisher_res = publisher_.publish(request, TransferTypeServiceRequest, server_node_id,
+                                                 out_call_id.transfer_id);
+    if (publisher_res < 0)
+    {
+        cancelCall(out_call_id);
+        return publisher_res;
+    }
+
+    UAVCAN_ASSERT(server_node_id == out_call_id.server_node_id);
+    return publisher_res;
+}
+
+template <typename DataType_, typename Callback_>
+int ServiceClient<DataType_, Callback_>::call(Frame& frame, NodeID server_node_id, const RequestType& request,
+                                              ServiceCallID& out_call_id)
+{
+    if (!coerceOrFallback<bool>(callback_, true))
+    {
+        UAVCAN_TRACE("ServiceClient", "Invalid callback");
+        return -ErrInvalidConfiguration;
+    }
+
+    /*
+     * Common procedures that don't depend on the struct data type
+     */
+    const int prep_res =
+        prepareToCall(SubscriberType::getNode(), DataType::getDataTypeFullName(), server_node_id, out_call_id);
+    if (prep_res < 0)
+    {
+        UAVCAN_TRACE("ServiceClient", "Failed to prepare the call, error: %i", prep_res);
+        return prep_res;
+    }
+
+    if(frame.isTransferIdAutoInc())
+    {
+        out_call_id.transfer_id = frame.getBaseAutoTransferID();
+    }
+
+    /*
+     * Initializing the call state - this will start the subscriber ad-hoc
+     */
+    const int call_state_res = addCallState(out_call_id);
+    if (call_state_res < 0)
+    {
+        UAVCAN_TRACE("ServiceClient", "Failed to add call state, error: %i", call_state_res);
+        return call_state_res;
+    }
+
+    /*
+     * Configuring the listener so it will accept only the matching responses
+     * TODO move to init(), but this requires to somewhat refactor GenericSubscriber<> (remove TransferForwarder)
+     */
+    TransferListenerWithFilter* const tl = SubscriberType::getTransferListener();
+    if (tl == UAVCAN_NULLPTR)
+    {
+        UAVCAN_ASSERT(0);  // Must have been created
+        cancelCall(out_call_id);
+        return -ErrLogic;
+    }
+    tl->installAcceptanceFilter(this);
+
+    /*
+     * Publishing the request
+     */
+    const int publisher_res = publisher_.publish(frame, request, TransferTypeServiceRequest, server_node_id,
                                                  out_call_id.transfer_id);
     if (publisher_res < 0)
     {

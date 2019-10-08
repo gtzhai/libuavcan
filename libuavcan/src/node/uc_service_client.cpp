@@ -21,7 +21,8 @@ void ServiceClientBase::CallState::handleDeadline(MonotonicTime)
      */
     UAVCAN_ASSERT(timed_out_ == false);
     timed_out_ = true;
-    owner_.generateDeadlineImmediately();
+
+    //owner_.generateDeadlineImmediately();zgt
     UAVCAN_TRACE("ServiceClient::CallState", "Relaying execution to the owner's handler via timer callback");
 }
 
@@ -62,18 +63,21 @@ int ServiceClientBase::prepareToCall(INode& node,
     /*
      * Determining the Transfer ID
      */
-    const OutgoingTransferRegistryKey otr_key(data_type_descriptor_->getID(),
-                                              TransferTypeServiceRequest, server_node_id);
-    const MonotonicTime otr_deadline = node.getMonotonicTime() + TransferSender::getDefaultMaxTransferInterval();
-    TransferID* const otr_tid =
-        node.getDispatcher().getOutgoingTransferRegistry().accessOrCreate(otr_key, otr_deadline);
-    if (!otr_tid)
+
     {
-        UAVCAN_TRACE("ServiceClient", "OTR access failure, dtd=%s", data_type_descriptor_->toString().c_str());
-        return -ErrMemory;
+        const OutgoingTransferRegistryKey otr_key(data_type_descriptor_->getID(),
+                                                  TransferTypeServiceRequest, server_node_id);
+        const MonotonicTime otr_deadline = node.getMonotonicTime() + TransferSender::getDefaultMaxTransferInterval();
+        TransferID* const otr_tid =
+            node.getDispatcher().getOutgoingTransferRegistry().accessOrCreate(otr_key, otr_deadline);
+        if (!otr_tid)
+        {
+            UAVCAN_TRACE("ServiceClient", "OTR access failure, dtd=%s", data_type_descriptor_->toString().c_str());
+            return -ErrMemory;
+        }
+        out_call_id.transfer_id = *otr_tid;
+        otr_tid->increment();
     }
-    out_call_id.transfer_id = *otr_tid;
-    otr_tid->increment();
 
     return 0;
 }

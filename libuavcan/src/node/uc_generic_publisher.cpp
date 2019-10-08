@@ -53,6 +53,21 @@ int GenericPublisherBase::genericPublish(const StaticTransferBufferImpl& buffer,
     }
 }
 
+int GenericPublisherBase::genericPublish(Frame &frame, const StaticTransferBufferImpl& buffer, TransferType transfer_type,
+                                         NodeID dst_node_id, TransferID* tid, MonotonicTime blocking_deadline)
+{
+    if (tid)
+    {
+        return sender_.send(frame, buffer.getRawPtr(), buffer.getMaxWritePos(), getTxDeadline(),
+                            blocking_deadline, transfer_type, dst_node_id, *tid);
+    }
+    else
+    {
+        return sender_.send(frame, buffer.getRawPtr(), buffer.getMaxWritePos(), getTxDeadline(),
+                            blocking_deadline, transfer_type, dst_node_id);
+    }
+}
+
 void GenericPublisherBase::setTxTimeout(MonotonicDuration tx_timeout)
 {
     tx_timeout = max(tx_timeout, getMinTxTimeout());

@@ -25,6 +25,8 @@ class UAVCAN_EXPORT TransferSender
 
     TransferPriority priority_;
     TransferCRC crc_base_;
+    TransferCRC32 crc_base32_;
+    TransferCRC48 crc_base48_;
     DataTypeID data_type_id_;
     CanIOFlags flags_;
     uint8_t iface_mask_;
@@ -95,6 +97,10 @@ public:
              MonotonicTime blocking_deadline, TransferType transfer_type, NodeID dst_node_id,
              TransferID tid) const;
 
+    int send(Frame& frame, const uint8_t* payload, unsigned payload_len, MonotonicTime tx_deadline,
+             MonotonicTime blocking_deadline, TransferType transfer_type, NodeID dst_node_id,
+             TransferID tid) const;
+
     /**
      * Send with automatic Transfer ID.
      *
@@ -104,6 +110,9 @@ public:
      * TID is managed by OutgoingTransferRegistry.
      */
     int send(const uint8_t* payload, unsigned payload_len, MonotonicTime tx_deadline,
+             MonotonicTime blocking_deadline, TransferType transfer_type, NodeID dst_node_id) const;
+
+    int send(Frame& frame, const uint8_t* payload, unsigned payload_len, MonotonicTime tx_deadline,
              MonotonicTime blocking_deadline, TransferType transfer_type, NodeID dst_node_id) const;
 };
 

@@ -6,6 +6,7 @@
 #include <uavcan/debug.hpp>
 #include <cstdlib>
 #include <cassert>
+#include <iostream>
 
 namespace uavcan
 {
@@ -103,9 +104,67 @@ bool TransferListener::TimedOutReceiverPredicate::operator()(const TransferBuffe
 /*
  * TransferListener
  */
-bool TransferListener::checkPayloadCrc(const uint16_t compare_with, const ITransferBuffer& tbb) const
+bool TransferListener::checkPayloadCrc(const uint64_t compare_with, const ITransferBuffer& tbb) const
 {
     TransferCRC crc = crc_base_;
+    unsigned offset = 0;
+    while (true)
+    {
+        uint8_t buf[16];
+        const int res = tbb.read(offset, buf, sizeof(buf));
+        if (res < 0)
+        {
+            UAVCAN_TRACE("TransferListener", "Failed to check CRC: Buffer read failure %i", res);
+            return false;
+        }
+        if (res == 0)
+        {
+            break;
+        }
+        offset += unsigned(res);
+        crc.add(buf, unsigned(res));
+    }
+    if (crc.get() != compare_with)
+    {
+        UAVCAN_TRACE("TransferListener", "CRC mismatch, expected=0x%04x, got=0x%04x",
+                     int(compare_with), int(crc.get()));
+        return false;
+    }
+    return true;
+}
+
+bool TransferListener::checkPayloadCrc32(const uint64_t compare_with, const ITransferBuffer& tbb) const
+{
+    TransferCRC32 crc = crc_base32_;
+    unsigned offset = 0;
+    while (true)
+    {
+        uint8_t buf[16];
+        const int res = tbb.read(offset, buf, sizeof(buf));
+        if (res < 0)
+        {
+            UAVCAN_TRACE("TransferListener", "Failed to check CRC: Buffer read failure %i", res);
+            return false;
+        }
+        if (res == 0)
+        {
+            break;
+        }
+        offset += unsigned(res);
+        crc.add(buf, unsigned(res));
+    }
+    if (crc.get() != compare_with)
+    {
+        UAVCAN_TRACE("TransferListener", "CRC mismatch, expected=0x%04x, got=0x%04x",
+                     int(compare_with), int(crc.get()));
+        return false;
+    }
+    return true;
+}
+
+bool TransferListener::checkPayloadCrc48(const uint64_t compare_with, const ITransferBuffer& tbb) const
+{
+    TransferCRC48 crc = crc_base48_;
     unsigned offset = 0;
     while (true)
     {
@@ -135,15 +194,18 @@ bool TransferListener::checkPayloadCrc(const uint16_t compare_with, const ITrans
 void TransferListener::handleReception(TransferReceiver& receiver, const RxFrame& frame,
                                            TransferBufferAccessor& tba)
 {
+    //std::cerr<<"listener::handleReception in:"<<std::endl;
     switch (receiver.addFrame(frame, tba))
     {
     case TransferReceiver::ResultNotComplete:
     {
         perf_.addErrors(receiver.yieldErrorCount());
+        //std::cerr<<"listener::handleReception 1: not complete"<<std::endl;
         break;
     }
     case TransferReceiver::ResultSingleFrame:
     {
+        //std::cerr<<"listener::handleReception 2:"<<std::endl;
         perf_.addRxTransfer();
         SingleFrameIncomingTransfer it(frame);
         handleIncomingTransfer(it);
@@ -158,11 +220,17 @@ void TransferListener::handleReception(TransferReceiver& receiver, const RxFrame
             UAVCAN_TRACE("TransferListener", "Buffer access failure, last frame: %s", frame.toString().c_str());
             break;
         }
-        if (!checkPayloadCrc(receiver.getLastTransferCrc(), *tbb))
+
+        if(frame.getFrameType() == 0)
         {
-            UAVCAN_TRACE("TransferListener", "CRC error, last frame: %s", frame.toString().c_str());
-            break;
+            if (!checkPayloadCrc(receiver.getLastTransferCrc(), *tbb))
+            {
+                UAVCAN_TRACE("TransferListener", "CRC error, last frame: %s", frame.toString().c_str());
+                break;
+            }
         }
+        //std::cerr<<"listener::handleReception 3:"<<std::endl;
+
         MultiFrameIncomingTransfer it(receiver.getLastTransferTimestampMonotonic(),
                                       receiver.getLastTransferTimestampUtc(), frame, tba);
         handleIncomingTransfer(it);
@@ -204,6 +272,7 @@ void TransferListener::handleFrame(const RxFrame& frame)
     if (frame.getSrcNodeID().isUnicast())       // Normal transfer
     {
         const TransferBufferManagerKey key(frame.getSrcNodeID(), frame.getTransferType());
+        //std::cerr<<"listener::handleFrame:unicast:"<<std::endl;
 
         TransferReceiver* recv = receivers_.access(key);
         if (recv == UAVCAN_NULLPTR)
@@ -229,6 +298,7 @@ void TransferListener::handleFrame(const RxFrame& frame)
              frame.isEndOfTransfer() &&
              frame.getDstNodeID().isBroadcast())        // Anonymous transfer
     {
+        //std::cerr<<"listener::handleFrame:broadcast:"<<std::endl;
         handleAnonymousTransferReception(frame);
     }
     else
@@ -242,6 +312,7 @@ void TransferListener::handleFrame(const RxFrame& frame)
  */
 void TransferListenerWithFilter::handleFrame(const RxFrame& frame)
 {
+    //std::cerr<<"listenerFilter::handleFrame in:"<<std::endl;
     if (filter_ != UAVCAN_NULLPTR)
     {
         if (filter_->shouldAcceptFrame(frame))

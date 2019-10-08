@@ -73,10 +73,10 @@ private:
     enum { TimerPeriodMs100 = 2 };
 
     typedef MethodBinder<NodeStatusMonitor*,
-                         void (NodeStatusMonitor::*)(const ReceivedDataStructure<protocol::NodeStatus>&)>
+                         int (NodeStatusMonitor::*)(const ReceivedDataStructure<protocol::NodeStatus>&)>
             NodeStatusCallback;
 
-    typedef MethodBinder<NodeStatusMonitor*, void (NodeStatusMonitor::*)(const TimerEvent&)> TimerCallback;
+    typedef MethodBinder<NodeStatusMonitor*, int (NodeStatusMonitor::*)(const TimerEvent&)> TimerCallback;
 
     Subscriber<protocol::NodeStatus, NodeStatusCallback> sub_;
 
@@ -91,7 +91,7 @@ private:
         { }
     };
 
-    mutable Entry entries_[NodeID::Max];  // [1, NodeID::Max]
+    mutable Entry entries_[NodeID::AbsMax];  // [1, NodeID::Max]
 
     Entry& getEntry(NodeID node_id) const
     {
@@ -122,7 +122,7 @@ private:
         entry = new_entry_value;
     }
 
-    void handleNodeStatus(const ReceivedDataStructure<protocol::NodeStatus>& msg)
+    int handleNodeStatus(const ReceivedDataStructure<protocol::NodeStatus>& msg)
     {
         Entry new_entry;
         new_entry.time_since_last_update_ms100 = 0;
@@ -133,9 +133,10 @@ private:
         changeNodeStatus(msg.getSrcNodeID(), new_entry);
 
         handleNodeStatusMessage(msg);
+        return 0;
     }
 
-    void handleTimerEvent(const TimerEvent&)
+    int handleTimerEvent(const TimerEvent&)
     {
         const int OfflineTimeoutMs100 = protocol::NodeStatus::OFFLINE_TIMEOUT_MS / 100;
 
@@ -157,6 +158,7 @@ private:
                 }
             }
         }
+        return 0;
     }
 
 protected:

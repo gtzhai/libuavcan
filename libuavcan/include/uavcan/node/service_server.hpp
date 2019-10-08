@@ -16,6 +16,7 @@
 #if UAVCAN_CPP_VERSION >= UAVCAN_CPP11
 # include <functional>
 #endif
+#include <iostream>
 
 namespace uavcan
 {
@@ -80,10 +81,10 @@ public:
  */
 template <typename DataType_,
 #if UAVCAN_CPP_VERSION >= UAVCAN_CPP11
-          typename Callback_ = std::function<void (const ReceivedDataStructure<typename DataType_::Request>&,
+          typename Callback_ = std::function<int (const ReceivedDataStructure<typename DataType_::Request>&,
                                                    ServiceResponseDataStructure<typename DataType_::Response>&)>
 #else
-          typename Callback_ = void (*)(const ReceivedDataStructure<typename DataType_::Request>&,
+          typename Callback_ = int (*)(const ReceivedDataStructure<typename DataType_::Request>&,
                                         ServiceResponseDataStructure<typename DataType_::Response>&)
 #endif
           >
@@ -92,11 +93,12 @@ class UAVCAN_EXPORT ServiceServer
 {
 public:
     typedef DataType_ DataType;
+
     typedef typename DataType::Request RequestType;
     typedef typename DataType::Response ResponseType;
     typedef Callback_ Callback;
 
-private:
+//private:
     typedef GenericSubscriber<DataType, RequestType, TransferListener> SubscriberType;
     typedef GenericPublisher<DataType, ResponseType> PublisherType;
 
@@ -109,33 +111,40 @@ private:
         UAVCAN_ASSERT(request.getTransferType() == TransferTypeServiceRequest);
 
         ServiceResponseDataStructure<ResponseType> response;
+        int ret = 0;
 
+        //std::cerr<<"server handle recieved data struct in:"<<std::endl;
         if (coerceOrFallback<bool>(callback_, true))
         {
             UAVCAN_ASSERT(response.isResponseEnabled());  // Enabled by default
-            callback_(request, response);
+            ret = callback_(request, response);
         }
         else
         {
             handleFatalError("Srv serv clbk");
         }
 
-        if (response.isResponseEnabled())
+        if(ret == 0)
         {
-            publisher_.setPriority(request.getPriority());      // Responding at the same priority.
-
-            const int res = publisher_.publish(response, TransferTypeServiceResponse, request.getSrcNodeID(),
-                                               request.getTransferID());
-            if (res < 0)
+            if (response.isResponseEnabled())
             {
-                UAVCAN_TRACE("ServiceServer", "Response publication failure: %i", res);
-                publisher_.getNode().getDispatcher().getTransferPerfCounter().addError();
-                response_failure_count_++;
+                publisher_.setPriority(request.getPriority());      // Responding at the same priority.
+
+                Frame frame;
+
+                const int res = publisher_.publish(frame, response, TransferTypeServiceResponse, request.getSrcNodeID(),
+                                                   request.getTransferID());
+                if (res < 0)
+                {
+                    UAVCAN_TRACE("ServiceServer", "Response publication failure: %i", res);
+                    publisher_.getNode().getDispatcher().getTransferPerfCounter().addError();
+                    response_failure_count_++;
+                }
             }
-        }
-        else
-        {
-            UAVCAN_TRACE("ServiceServer", "Response was suppressed by the application");
+            else
+            {
+                UAVCAN_TRACE("ServiceServer", "Response was suppressed by the application");
+            }
         }
     }
 

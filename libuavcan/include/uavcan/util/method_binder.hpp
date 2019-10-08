@@ -52,30 +52,30 @@ public:
     /**
      * Will raise a fatal error if either method pointer or object pointer are null.
      */
-    void operator()()
+    int operator()()
     {
         validateBeforeCall();
-        (obj_->*fun_)();
+        return (obj_->*fun_)();
     }
 
     /**
      * Will raise a fatal error if either method pointer or object pointer are null.
      */
     template <typename Par1>
-    void operator()(Par1& p1)
+    int operator()(Par1& p1)
     {
         validateBeforeCall();
-        (obj_->*fun_)(p1);
+        return (obj_->*fun_)(p1);
     }
 
     /**
      * Will raise a fatal error if either method pointer or object pointer are null.
      */
     template <typename Par1, typename Par2>
-    void operator()(Par1& p1, Par2& p2)
+    int operator()(Par1& p1, Par2& p2)
     {
         validateBeforeCall();
-        (obj_->*fun_)(p1, p2);
+        return (obj_->*fun_)(p1, p2);
     }
 };
 

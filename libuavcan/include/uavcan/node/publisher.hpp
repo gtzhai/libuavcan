@@ -54,6 +54,11 @@ public:
         return BaseType::publish(message, TransferTypeMessageBroadcast, NodeID::Broadcast);
     }
 
+    int broadcast(Frame &frame, const DataType& message)
+    {
+        return BaseType::publish(frame, message, TransferTypeMessageBroadcast, NodeID::Broadcast);
+    }
+
     /**
      * Warning: You probably don't want to use this method; it's for advanced use cases like
      * e.g. network time synchronization. Use the overloaded method with fewer arguments instead.
@@ -63,6 +68,11 @@ public:
     int broadcast(const DataType& message, TransferID tid)
     {
         return BaseType::publish(message, TransferTypeMessageBroadcast, NodeID::Broadcast, tid);
+    }
+
+    int broadcast(Frame &frame, const DataType& message, TransferID tid)
+    {
+        return BaseType::publish(frame, message, TransferTypeMessageBroadcast, NodeID::Broadcast, tid);
     }
 
     static MonotonicDuration getDefaultTxTimeout() { return MonotonicDuration::fromMSec(100); }

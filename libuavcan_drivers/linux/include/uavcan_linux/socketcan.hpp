@@ -13,6 +13,7 @@
 #include <unordered_set>
 #include <memory>
 #include <algorithm>
+#include <iostream>
 
 #include <fcntl.h>
 #include <sys/socket.h>
@@ -192,6 +193,7 @@ class SocketCanIface : public uavcan::ICanIface
         const ::can_frame sockcan_frame = makeSocketCanFrame(frame);
 
         const int res = ::write(fd_, &sockcan_frame, sizeof(sockcan_frame));
+        //std::cerr<<"can write in:"<<res<<std::endl;
         if (res <= 0)
         {
             if (errno == ENOBUFS || errno == EAGAIN)    // Writing is not possible atm, not an error
@@ -234,6 +236,7 @@ class SocketCanIface : public uavcan::ICanIface
         msg.msg_controllen = ControlSize;
 
         const int res = ::recvmsg(fd_, &msg, MSG_DONTWAIT);
+        //std::cerr<<"can read in:"<<res<<std::endl;
         if (res <= 0)
         {
             return (res < 0 && errno == EWOULDBLOCK) ? 0 : res;
@@ -271,6 +274,7 @@ class SocketCanIface : public uavcan::ICanIface
 
     void pollWrite()
     {
+        //std::cerr<<"can poll write in:"<<std::endl;
         while (hasReadyTx())
         {
             const TxItem tx = tx_queue_.top();
@@ -307,6 +311,7 @@ class SocketCanIface : public uavcan::ICanIface
 
     void pollRead()
     {
+        //std::cerr<<"can poll read in:"<<std::endl;
         while (true)
         {
             RxItem rx;
@@ -392,6 +397,7 @@ public:
     std::int16_t send(const uavcan::CanFrame& frame, const uavcan::MonotonicTime tx_deadline,
                       const uavcan::CanIOFlags flags) override
     {
+        //std::cerr<<"can send in:"<<std::endl;
         tx_queue_.emplace(frame, tx_deadline, flags, tx_frame_counter_);
         tx_frame_counter_++;
         pollRead();     // Read poll is necessary because it can release the pending TX flag
@@ -406,6 +412,7 @@ public:
     std::int16_t receive(uavcan::CanFrame& out_frame, uavcan::MonotonicTime& out_ts_monotonic,
                          uavcan::UtcTime& out_ts_utc, uavcan::CanIOFlags& out_flags) override
     {
+        //std::cerr<<"can receive in:"<<std::endl;
         if (rx_queue_.empty())
         {
             pollRead();            // This allows to use the socket not calling poll() explicitly.
